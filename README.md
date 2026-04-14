@@ -29,25 +29,16 @@ Skill path in this repo:
 Install the `super-plan` skill from this repository:
 
 ```bash
-npx skills add https://github.com/singh-gur/agent_skills.git --skill super-plan -g --agent pi -y
+npx skills add singh-gur/agent_skills --skill super-plan -g -y
 ```
 
 ### Command breakdown
 
 - `add` installs a skill from a repository
-- `https://github.com/singh-gur/agent_skills.git` is this repository
+- `singh-gur/agent_skills` is the short GitHub reference for this repository
 - `--skill super-plan` selects the skill to install
-- `-g` installs it globally for your local agent setup
-- `--agent pi` installs it for the `pi` agent
+- `-g` installs it globally for your local setup
 - `-y` auto-confirms the install
-
-## Install for another agent
-
-If you use a different compatible agent runtime, change the `--agent` value:
-
-```bash
-npx skills add https://github.com/singh-gur/agent_skills.git --skill super-plan -g --agent <agent-name> -y
-```
 
 ## Verify the repository contents
 
