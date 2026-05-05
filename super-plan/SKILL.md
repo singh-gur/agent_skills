@@ -3,7 +3,7 @@ name: super-plan
 description: Analyzes a task, explores the codebase, asks clarifying questions, and produces a phased implementation plan in `PLAN.md` or `plans/<task-name>.md`. Use for complex features, refactors, migrations, architectural work, or any multi-step change that needs balanced phases, dependencies, risks, and execution-ready tasks.
 metadata:
   author: gurbakhshish
-  source: adapted from /home/gurbakhshish/dev/src/github/opencode/agents/super-plan.md
+  source: adapted from https://github.com/singh-gur/opencode/blob/main/agents/super-plan.md
   spec: https://agentskills.io/specification
 ---
 
