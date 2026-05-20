@@ -50,6 +50,28 @@ Skill path in this repo:
 
 - `simple-plan/SKILL.md`
 
+### `caveman`
+
+Enables ultra-compressed communication mode while preserving technical accuracy.
+
+Use it when you need help with:
+
+- shorter agent responses
+- lower token usage
+- caveman-style concise prose
+- optional `lite`, `full`, or `ultra` compression levels
+
+What it does:
+
+- drops filler, pleasantries, articles, and hedging where safe
+- keeps technical terms, code blocks, symbols, and quoted errors exact
+- persists until stopped with `stop caveman` or `normal mode`
+- temporarily returns to clearer prose when compression could create ambiguity
+
+Skill path in this repo:
+
+- `caveman/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `super-plan` skill from this repository:
@@ -62,6 +84,12 @@ Install the `simple-plan` skill from this repository:
 
 ```bash
 npx skills add singh-gur/agent_skills --skill simple-plan -g -y
+```
+
+Install the `caveman` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill caveman -g -y
 ```
 
 ### Command breakdown
@@ -78,12 +106,15 @@ Current skills in this repo:
 
 - `super-plan`
 - `simple-plan`
+- `caveman`
 
 ## Source layout
 
 ```text
 .
 ├── README.md
+├── caveman/
+│   └── SKILL.md
 ├── simple-plan/
 │   └── SKILL.md
 └── super-plan/
