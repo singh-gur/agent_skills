@@ -27,8 +27,10 @@ Do not use this skill for complex features, broad refactors, migrations, archite
 - Plan only. Do not silently switch from planning to implementation.
 - Keep the plan single-phase. If the full task cannot fit safely in one phase, say so and plan only the safest useful single-phase slice unless the user asks to change workflows.
 - Explore before planning, but keep exploration proportional to the task.
-- Ask focused clarifying questions only when missing information would materially change the plan.
+- Before planning, ask the user for two preferences: the level of technical detail to put in the plan, and how much feedback they want to provide on planning decisions. Honor both throughout the workflow.
+- Ask focused clarifying questions at the frequency the user requested, and only when missing information would materially change the plan.
 - Prefer practical, execution-ready steps over exhaustive analysis.
+- Do not write the plan file until the user has reviewed the draft and approved it (or requested edits).
 - Keep the skill harness-agnostic. Refer to capabilities generically, not by product-specific tool names.
 - After writing the plan, summarize it for the user without pasting the entire file back into chat unless asked.
 
@@ -44,19 +46,39 @@ Do not use this skill for complex features, broad refactors, migrations, archite
    - Avoid broad repository surveys unless needed to avoid a bad plan.
    - Base the plan on observed repository facts, not guesses.
 
-3. Choose the plan destination
+3. Gather planning preferences
+   - Ask the user two preference questions up front, ideally in a single interaction:
+     - Technical detail level for the plan. Offer options such as:
+       - `Concise` — minimal prose, bullet points only, skip optional sections.
+       - `Standard` — balanced detail, fill in the sections that apply.
+       - `Detailed` — thorough context, rationale, and edge-case notes in every section.
+     - Feedback frequency for planning decisions. Offer options such as:
+       - `Minimal` — only ask about decisions that would materially change the plan; otherwise use sensible defaults.
+       - `Standard` — confirm key decisions and assumptions before finalizing.
+       - `High` — check in on most planning decisions and confirm the plan direction step by step.
+   - If the user does not answer, default to `Standard` detail and `Standard` feedback.
+   - These preferences govern the rest of the workflow: how much depth to write and how often to consult the user.
+
+4. Choose the plan destination
    - Ask the user where to save the plan before writing it.
    - Offer:
      - `PLAN.md` in the repository root
      - `plans/<task-name>.md` for organized multi-plan workflows
    - If using the `plans/` option, generate a kebab-case filename from the task and let the user adjust it.
 
-4. Write exactly one plan file
+5. Draft and review the plan before writing
+   - Draft the full plan content (at the chosen detail level) without writing the file yet.
+   - Present the draft to the user for review. For a `Concise` plan, show the full draft inline; for a `Detailed` plan, show the full draft or a faithful section-by-section summary.
+   - Ask the user to approve it, request edits, or reject it.
+   - If the user requests edits, revise the draft and re-review until approved. Honor the requested feedback frequency when deciding which edits need another confirmation round.
+   - Only proceed to writing the file once the user explicitly approves the draft.
+
+6. Write exactly one plan file
    - The plan file is the main deliverable.
    - Keep it concise, concrete, and easy to execute in one pass.
    - For optional sections with no content, write `None` instead of leaving them blank.
 
-5. Summarize for the user
+7. Summarize for the user
    - Give a concise recap of the objective, key steps, verification, open questions if any, and saved file path.
 
 ## Plan requirements
@@ -187,7 +209,9 @@ A good plan produced by this skill should:
 
 - Do not implement code while acting in planning mode.
 - Do not invent repository details you have not inspected.
-- Ask at most the focused questions needed to remove meaningful ambiguity.
+- Ask the user up front for their technical detail level and feedback frequency, then honor those preferences.
+- Ask clarifying questions at the frequency the user requested, and only when missing information would materially change the plan.
+- Do not write the plan file until the user has reviewed the draft and approved it.
 - Do not create multiple phases. If multiple phases seem necessary, warn the user that the task may be too complex for a simple plan and constrain the output to the safest useful single-phase plan.
 - Do not include phase dependency graphs, version-control strategies, broad architecture decision records, migration plans, or multi-phase roadmaps unless the user explicitly asks.
 - Do not mention product-specific tool names unless the user explicitly asks for a harness-specific variant.
