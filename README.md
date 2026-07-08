@@ -72,6 +72,30 @@ Skill path in this repo:
 
 - `caveman/SKILL.md`
 
+### `arch-design`
+
+Produces a well-reasoned architecture design document with code-generated diagrams.
+
+Use it when you need help with:
+
+- designing the architecture of a new system, service, or major feature
+- high-level design (HLD), system design, or architecture proposals
+- technology tradeoffs, component breakdowns, and architecture diagrams
+- aligning stakeholders before implementation
+
+What it does:
+
+- researches current best practices via web search/fetch instead of relying on memory
+- clarifies requirements interactively at discovery and before the final proposal
+- asks the user to pick a detail level: Early Draft, POC Ready, or Implementation Ready
+- prefers simple, standard, boring technology; only chooses complex when a concrete need forces it
+- draws architecture diagrams as code with the Python `diagrams` library and renders them to PNG
+- keeps diagram sources in `docs/src/` and PNGs in `docs/assets/` and regenerates them on material change
+
+Skill path in this repo:
+
+- `arch-design/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `super-plan` skill from this repository:
@@ -92,6 +116,12 @@ Install the `caveman` skill from this repository:
 npx skills add singh-gur/agent_skills --skill caveman -g -y
 ```
 
+Install the `arch-design` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill arch-design -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -107,12 +137,15 @@ Current skills in this repo:
 - `super-plan`
 - `simple-plan`
 - `caveman`
+- `arch-design`
 
 ## Source layout
 
 ```text
 .
 ├── README.md
+├── arch-design/
+│   └── SKILL.md
 ├── caveman/
 │   └── SKILL.md
 ├── simple-plan/
