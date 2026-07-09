@@ -88,6 +88,16 @@ Do not proceed to render until `dot -V` succeeds — without the Graphviz binary
 - If the project already has an established docs layout, adapt the paths to match it and stay consistent.
 - Keep diagrams readable: use `direction`, `graph_attr` (e.g. `fontsize`, `bgcolor`, `pad`), and `Cluster` to group related nodes. Avoid wall-of-icons diagrams; split into multiple focused views instead.
 
+### Diagram visual-quality standard
+
+- **Render and inspect every PNG.** After rendering, use the environment's image-reading capability (for example, `read` on each PNG) to inspect the actual output. A successful Graphviz exit code is not sufficient.
+- **Iterate until the output passes.** Regenerate any diagram with clipped, overlapping, or ambiguous labels; lines crossing labels; unnecessary edge crossings; excessive empty space; or unreadable text at normal document width. Do not report diagrams as complete before this check passes.
+- **Use a consistent visual baseline.** Default to a white background, a sans-serif font, explicit `node_attr` font settings, `splines="ortho"`, and deliberate `nodesep`/`ranksep`. Define shared `GRAPH_ATTR` and `NODE_ATTR` constants, or a shared source helper, for all diagrams in one architecture document.
+- **Keep labels short.** Use at most two concise lines per node. Put implementation detail in the document, not in icon captions. Prefer a node title over a title plus a long subtitle.
+- **Use meaningful icons carefully.** Use verified provider/framework icons for concrete technologies. Do not use `Blank` nodes when an appropriate icon exists. If an icon's embedded text conflicts with its label or harms readability, use a simpler semantically appropriate icon instead.
+- **Choose layouts intentionally.** Start with `LR` for context and deployment views and `TB` for sequential data-flow views, then use visual inspection to choose the clearer layout. Use clusters only when they communicate a meaningful boundary; split diagrams rather than overcrowding them.
+- **Limit visual complexity.** One responsibility per node, only the edges needed for the view's purpose, and split a diagram when it cannot remain clear with short labels.
+
 ### Run diagrams
 
 ```bash
@@ -113,10 +123,15 @@ from diagrams.aws.network import ELB
 from diagrams.onprem.client import Users
 
 GRAPH_ATTR = {
-    "fontsize": "32",
-    "bgcolor": "transparent",
+    "fontsize": "24",
+    "fontname": "Sans-Serif",
+    "bgcolor": "white",
     "pad": "0.6",
+    "nodesep": "0.9",
+    "ranksep": "1.0",
+    "splines": "ortho",
 }
+NODE_ATTR = {"fontname": "Sans-Serif", "fontsize": "15"}
 
 with Diagram(
     "System Context",
@@ -125,6 +140,7 @@ with Diagram(
     show=False,
     direction="LR",
     graph_attr=GRAPH_ATTR,
+    node_attr=NODE_ATTR,
 ):
     Users("End Users") >> ELB("Load Balancer") >> EC2("Web App") >> RDS("Primary DB")
 ```
@@ -140,12 +156,25 @@ from diagrams.aws.network import ELB
 from diagrams.aws.storage import S3
 from diagrams.onprem.client import Users
 
+GRAPH_ATTR = {
+    "fontsize": "24",
+    "fontname": "Sans-Serif",
+    "bgcolor": "white",
+    "pad": "0.6",
+    "nodesep": "0.9",
+    "ranksep": "1.0",
+    "splines": "ortho",
+}
+NODE_ATTR = {"fontname": "Sans-Serif", "fontsize": "15"}
+
 with Diagram(
     "Container View",
     filename="docs/assets/container",
     outformat="png",
     show=False,
     direction="TB",
+    graph_attr=GRAPH_ATTR,
+    node_attr=NODE_ATTR,
 ):
     users = Users("End Users")
     lb = ELB("Load Balancer")
@@ -191,8 +220,9 @@ Node import paths come from providers such as `diagrams.aws.*`, `diagrams.onprem
    - Walk through the draft (full for Early Draft; full or faithful section summary for the larger levels), including the intended diagrams and save paths.
    - Get explicit approval, or revise until approved.
 
-8. **Write the document and diagrams.**
+8. **Write, render, and inspect the document and diagrams.**
    - After approval, write diagram code in `docs/src/`, render PNGs to `docs/assets/`, and reference them from the document.
+   - Inspect every rendered PNG with the environment's image-reading tool and apply the Diagram visual-quality standard. Iterate on the source and re-render until it passes.
    - Write the document to the agreed location and regenerate any diagrams touched by review changes.
 
 9. **On material change.**
@@ -263,6 +293,7 @@ A good architecture design produced by this skill should:
 - be grounded in researched evidence and observed system/repo facts, not guesses
 - choose the simplest standard approach that meets the requirements, with complexity justified by forcing functions
 - include accurate, readable, mutually consistent diagrams that match the prose
+- visually inspect every rendered PNG and meet the Diagram visual-quality standard before completion
 - make assumptions, tradeoffs, and risks explicit
 - cite sources for version-, limit-, or price-dependent claims
 - match the chosen detail level without padding
@@ -276,6 +307,7 @@ A good architecture design produced by this skill should:
 - Prefer simple and standard; only choose complex when a concrete need forces it, and state that need.
 - Verify the diagrams toolchain (`uv` and Graphviz `dot`) before rendering; ask before installing anything globally or via an OS package manager.
 - Keep diagram code in `docs/src/` and PNGs in `docs/assets/`; run from the repo root; set `show=False`.
+- Visually inspect every rendered PNG and iterate on source/layout until labels, edges, spacing, and icons meet the Diagram visual-quality standard.
 - Regenerate diagrams whenever the architecture changes materially, and keep the document in sync.
 - Do not write the document, diagram source files, or rendered assets until the user has reviewed the draft and approved it.
 - After saving, respond with a concise summary and the saved paths.
