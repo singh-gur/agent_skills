@@ -1,6 +1,7 @@
 ---
 name: arch-design
 description: Produces a well-thought-out architecture design document with code-generated diagrams. Researches current best practices via the web, clarifies requirements interactively at discovery and before the final proposal, and offers three detail levels (Early Draft, POC Ready, Implementation Ready). Prefers simple, standard, boring technology over complex ones unless a concrete need forces complexity. Draws architecture diagrams as code with the Python `diagrams` library and renders them to PNG. Use when the user asks to "design an architecture", "system design", "architecture doc", "high-level design", "HLD", "draw a system diagram", or to produce an architecture proposal/ADR.
+compatibility: Requires web research capability for current facts, Python via `uv`, and Graphviz `dot` to render diagrams; ask before any global or system package install.
 metadata:
   author: gurbakhshish
   source: diagrams via https://diagrams.mingrammer.com
@@ -29,7 +30,7 @@ Do not use this skill for a single implementation plan with phases (use a planni
 - **Research first.** For frameworks, services, patterns, limits, pricing, versions, and comparisons, look up current sources via `web_search` / `fetch_content` rather than relying on model memory. Cite sources for claims that depend on them.
 - **Simple and standard by default.** Prefer proven, boring technology and the fewest moving parts that satisfy the requirements. Only introduce complexity when a concrete forcing function demands it, and say what that forcing function is.
 - **Diagrams as code.** Author diagrams in Python with the `diagrams` library, render them to PNG, and reference them in the document. Regenerate diagrams whenever the architecture changes materially.
-- **Review before writing.** Draft the design, walk the user through it, and only persist the file once they approve (or request edits).
+- **Review before writing.** Draft the design and intended diagrams, walk the user through them, and only persist document, diagram source, and rendered asset files once they approve (or request edits).
 - **Keep tooling portable where you can.** The interactive-question and web-research capabilities are the point; name the concrete tools (`ask_user`, `web_search`, `fetch_content`) when present, but fall back to the environment's equivalents if those names are unavailable.
 
 ## Design principles — simple/standard first
@@ -52,33 +53,29 @@ Apply these before proposing anything complex:
 
 ## Diagrams toolchain
 
-The `diagrams` library renders through the **Graphviz** system binary, so three things must be present before generating any diagram. Verify them at the start of every run:
+The `diagrams` library renders through the **Graphviz** system binary. Verify these before generating any diagram:
 
 ```bash
 # 1. uv (Python tool runner)
 uv --version
 
-# 2. diagrams installed as a uv tool
-uv tool list | grep -i diagrams      # expect: diagrams (... v0.25.x)
-
-# 3. Graphviz system binary (REQUIRED to render PNG/JPG/SVG/PDF)
+# 2. Graphviz system binary (REQUIRED to render PNG/JPG/SVG/PDF)
 dot -V
 ```
 
-**Install what is missing:**
+The Python `diagrams` package does **not** need to be globally installed when using the recommended `uv run --with diagrams` command below.
 
-```bash
-# diagrams as a uv tool (isolated; does not pollute the project env)
-uv tool install diagrams
+**If something is missing:**
 
-# Graphviz system package — pick the command for this OS:
-#   Fedora/RHEL:   sudo dnf install graphviz
-#   Debian/Ubuntu: sudo apt install graphviz
-#   macOS:         brew install graphviz
-#   Arch:          sudo pacman -S graphviz
-```
+- If `uv` is missing, ask the user how they want Python dependencies handled before installing anything.
+- If `dot -V` fails, Graphviz is missing or unavailable. Ask the user before running any OS package-manager command, especially anything requiring `sudo`.
+- Suggested Graphviz install commands, after explicit user approval:
+  - Fedora/RHEL: `sudo dnf install graphviz`
+  - Debian/Ubuntu: `sudo apt install graphviz`
+  - macOS: `brew install graphviz`
+  - Arch: `sudo pacman -S graphviz`
 
-Do not proceed to render until `dot -V` succeeds — without the Graphviz binary, `diagrams` fails with `ExecutableNotFound: failed to execute PosixPath('dot')`. If you cannot install Graphviz (e.g. no sudo), tell the user the exact command and stop.
+Do not proceed to render until `dot -V` succeeds — without the Graphviz binary, `diagrams` fails with `ExecutableNotFound: failed to execute PosixPath('dot')`. If Graphviz cannot be installed, tell the user the exact command they need to run and stop rendering.
 
 ## Diagrams authoring and output conventions
 
@@ -94,13 +91,16 @@ Do not proceed to render until `dot -V` succeeds — without the Graphviz binary
 ### Run diagrams
 
 ```bash
-# Preferred: render one or many files using the uv tool CLI
-diagrams docs/src/system_context.py
-diagrams docs/src/*.py
-
-# Fallback that needs no global tool install (still requires the Graphviz `dot` binary):
+# Render one diagram file without installing diagrams globally.
 uv run --no-project --with diagrams python docs/src/system_context.py
+
+# Render all diagram source files.
+for f in docs/src/*.py; do
+  uv run --no-project --with diagrams python "$f"
+done
 ```
+
+If the project already manages Python dependencies and includes `diagrams`, use the project's normal Python command instead. The official `diagrams` workflow is to execute the Python file directly.
 
 ### Verified quick reference (correct import paths for diagrams 0.25.x)
 
@@ -167,7 +167,7 @@ Node import paths come from providers such as `diagrams.aws.*`, `diagrams.onprem
    - Identify functional and non-functional requirements (scale, latency, availability, security, cost, compliance).
 
 2. **Verify the diagrams toolchain.**
-   - Run the uv / diagrams / Graphviz checks above. Install or advise before rendering.
+   - Run the `uv --version` and `dot -V` checks above. Ask before any install, and do not render until Graphviz is available.
 
 3. **Discovery (research-first).**
    - Explore the existing system/repo: current components, integrations, data, conventions, and constraints.
@@ -182,19 +182,20 @@ Node import paths come from providers such as `diagrams.aws.*`, `diagrams.onprem
    - Present the candidate architecture: key components, data flow, technology choices, major tradeoffs, and open questions.
    - Use the interactive question tool to confirm the direction and resolve key decisions **before** drafting the full document. This is the "during the final proposal" clarification point.
 
-6. **Author the diagrams.**
-   - Write diagram code in `docs/src/`, render PNGs to `docs/assets/`, and reference them from the document.
+6. **Draft the diagrams and document.**
+   - Draft the intended diagram set, component labels, and data flows without writing files yet.
+   - Draft the document at the chosen detail level (see structure below), including the planned diagram references.
    - Keep diagrams consistent with each other and with the prose.
 
-7. **Draft the document** at the chosen detail level (see structure below).
-
-8. **Review with the user.**
-   - Walk through the draft (full for Early Draft; full or faithful section summary for the larger levels).
+7. **Review with the user.**
+   - Walk through the draft (full for Early Draft; full or faithful section summary for the larger levels), including the intended diagrams and save paths.
    - Get explicit approval, or revise until approved.
 
-9. **Write the document** to the agreed location and regenerate any diagrams touched by review changes.
+8. **Write the document and diagrams.**
+   - After approval, write diagram code in `docs/src/`, render PNGs to `docs/assets/`, and reference them from the document.
+   - Write the document to the agreed location and regenerate any diagrams touched by review changes.
 
-10. **On material change.**
+9. **On material change.**
     - Whenever the architecture changes materially (new/deleted components, changed data flow, topology, or tech choices), update the affected diagram code and regenerate the PNGs, and keep the document in sync.
 
 ## Detail levels
@@ -273,8 +274,8 @@ A good architecture design produced by this skill should:
 - Ask the user to pick a detail level (Early Draft / POC Ready / Implementation Ready) before drafting.
 - Research first: use `web_search` / `fetch_content` for current facts instead of relying on memory; cite sources.
 - Prefer simple and standard; only choose complex when a concrete need forces it, and state that need.
-- Verify the diagrams toolchain (uv, diagrams, Graphviz `dot`) before rendering; install or advise if missing.
+- Verify the diagrams toolchain (`uv` and Graphviz `dot`) before rendering; ask before installing anything globally or via an OS package manager.
 - Keep diagram code in `docs/src/` and PNGs in `docs/assets/`; run from the repo root; set `show=False`.
 - Regenerate diagrams whenever the architecture changes materially, and keep the document in sync.
-- Do not write the document until the user has reviewed the draft and approved it.
+- Do not write the document, diagram source files, or rendered assets until the user has reviewed the draft and approved it.
 - After saving, respond with a concise summary and the saved paths.
