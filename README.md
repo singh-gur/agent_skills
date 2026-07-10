@@ -74,7 +74,7 @@ Skill path in this repo:
 
 ### `arch-design`
 
-Produces a well-reasoned architecture design document with code-generated diagrams.
+Produces a well-reasoned architecture design document with source-controlled, editable diagrams rendered to PNG.
 
 Use it when you need help with:
 
@@ -87,9 +87,10 @@ What it does:
 
 - researches current best practices via web search/fetch instead of relying on memory
 - clarifies requirements interactively at discovery and before the final proposal
-- asks the user to pick a detail level: Early Draft, POC Ready, or Implementation Ready
+- asks the user to choose Python `diagrams`/Graphviz or Excalidraw, then pick a detail level: Early Draft, POC Ready, or Implementation Ready
 - prefers simple, standard, boring technology; only chooses complex when a concrete need forces it
-- draws architecture diagrams as code with the Python `diagrams` library and renders them to PNG
+- supports Python diagram sources and editable `.excalidraw` scenes, with PNG output for both
+- includes a pinned, network-blocked Playwright renderer that uses Excalidraw's official `exportToBlob` API
 - keeps diagram sources in `docs/src/` and PNGs in `docs/assets/` and regenerates them on material change
 
 Skill path in this repo:
@@ -145,7 +146,14 @@ Current skills in this repo:
 .
 ├── README.md
 ├── arch-design/
-│   └── SKILL.md
+│   ├── SKILL.md
+│   └── scripts/
+│       └── excalidraw-renderer/
+│           ├── index.html
+│           ├── package.json
+│           ├── package-lock.json
+│           ├── render.mjs
+│           └── renderer-browser.js
 ├── caveman/
 │   └── SKILL.md
 ├── simple-plan/
