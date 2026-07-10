@@ -1,10 +1,10 @@
 ---
 name: arch-design
-description: Produces a well-thought-out architecture design document with editable, PNG-rendered diagrams. Researches current best practices, clarifies requirements interactively, and offers three detail levels. Before diagramming, asks the user to choose either Python `diagrams`/Graphviz or Excalidraw. Prefers simple, standard technology unless a concrete need forces complexity. Use for architecture designs, system designs, HLDs, system diagrams, and architecture proposals or ADRs.
-compatibility: Requires web research capability. Python diagrams require `uv` and Graphviz `dot`; bundled Excalidraw PNG export requires Node.js ^20.19 or >=22.12 and its pinned Playwright/Chromium renderer. Manual editor export is also supported. Ask before any global/system install or browser download.
+description: Produces a well-thought-out architecture design document with editable, PNG-rendered diagrams. Researches current best practices, clarifies requirements interactively, and offers three detail levels. Before diagramming, asks the user to choose either D2 or Excalidraw, with Iconify as the source for any icons. Prefers simple, standard technology unless a concrete need forces complexity. Use for architecture designs, system designs, HLDs, system diagrams, and architecture proposals or ADRs.
+compatibility: Requires web research capability. D2 output requires the `d2` CLI; PNG export can require Playwright/Chromium. Bundled Excalidraw PNG export requires Node.js ^20.19 or >=22.12 and its pinned Playwright/Chromium renderer. Manual editor export is also supported. Ask before any global/system install or browser download.
 metadata:
   author: gurbakhshish
-  sources: https://diagrams.mingrammer.com and https://excalidraw.com
+  sources: https://d2lang.com, https://iconify.design, and https://excalidraw.com
   spec: https://agentskills.io/specification
 ---
 
@@ -29,7 +29,7 @@ Do not use this skill for a single implementation plan with phases (use a planni
 - **Clarify interactively.** Use the environment's interactive question/ask tool (e.g. `ask_user`) to remove ambiguity at two points: (a) during discovery, when missing requirements/constraints would change the design; and (b) before the final proposal, to confirm direction and key decisions. Do not silently assume.
 - **Research first.** For frameworks, services, patterns, limits, pricing, versions, and comparisons, look up current sources via `web_search` / `fetch_content` rather than relying on model memory. Cite sources for claims that depend on them.
 - **Simple and standard by default.** Prefer proven, boring technology and the fewest moving parts that satisfy the requirements. Only introduce complexity when a concrete forcing function demands it, and say what that forcing function is.
-- **User-selected diagram tool.** Ask the user to choose Python `diagrams`/Graphviz or Excalidraw unless they already explicitly selected one. Preserve editable source (`.py` or `.excalidraw`), render PNGs, and reference them in the document. Regenerate diagrams whenever the architecture changes materially.
+- **User-selected diagram tool.** Ask the user to choose D2 or Excalidraw unless they already explicitly selected one. Preserve editable source (`.d2` or `.excalidraw`), render PNGs, and reference them in the document. Source every non-native icon from Iconify, vendor it locally, and regenerate diagrams whenever the architecture changes materially.
 - **Review before writing.** Draft the design and intended diagrams, walk the user through them, and only persist document, diagram source, and rendered asset files once they approve (or request edits).
 - **Keep tooling portable where you can.** The interactive-question and web-research capabilities are the point; name the concrete tools (`ask_user`, `web_search`, `fetch_content`) when present, but fall back to the environment's equivalents if those names are unavailable.
 
@@ -55,148 +55,154 @@ Apply these before proposing anything complex:
 
 Before drafting diagrams, use the interactive question tool to ask the user to pick one:
 
-- **Python `diagrams` + Graphviz** — best for formal infrastructure views, automatic layout, and verified cloud/Kubernetes/provider icons. Source files are Python.
+- **D2** — best for formal architecture views, concise text-based source, automatic layout, and reproducible CLI rendering. Source files use D2's declarative language.
 - **Excalidraw** — best for editable, collaborative, hand-drawn views and side-by-side design exploration. Source files use Excalidraw's open JSON format.
 
 Recommend the option that best fits the audience, but do not silently choose it. If the user already explicitly requested one, confirm that choice in the proposal rather than asking a redundant question. Use one tool consistently for a diagram set unless the user requests mixed or comparison views.
 
-## Python diagrams toolchain (when selected)
+## Iconify icon sourcing (both tools)
 
-The `diagrams` library renders through the **Graphviz** system binary. Verify these only when Python diagrams are selected:
+Use [Iconify](https://iconify.design/) as the canonical source for every non-native icon used in D2 or Excalidraw. Simple shapes, text, arrows, and D2's built-in semantic shapes do not need icons.
+
+- **Use icons only when they improve recognition.** Prefer a labeled shape when an icon would be decorative, ambiguous, too small, or visually noisy. Do not put an icon on every node by default.
+- **Choose deliberately.** Search Iconify, prefer one coherent icon set per diagram, verify the exact `{prefix}:{name}` identifier, and favor official vendor logos only when the component really is vendor-specific.
+- **Verify licensing per icon set.** Iconify aggregates sets with different licenses. Check the selected set's Iconify page, record the icon ID, source URL, creator/set, license, and required attribution in a `Diagram icon sources` section of the architecture document. Do not assume Iconify provides one universal icon license.
+- **Vendor exact SVGs.** Store selected icons under `docs/assets/icons/` with stable names such as `mdi--database.svg`. Do not leave runtime dependencies on Iconify API URLs in D2 or Excalidraw sources.
+- **Retrieve from the official API.** After verifying the icon in Iconify, download its SVG from `https://api.iconify.design/{prefix}/{name}.svg`. Pin visual choices in the URL when needed, such as `?color=%232F6FEB`, and record that exact URL in the document.
+- **Treat SVGs as untrusted input.** Require HTTPS and a successful response, inspect the downloaded file, and reject SVGs containing scripts, event handlers, `foreignObject`, or external references. Do not use an icon that cannot be safely vendored.
+- **No silent fallback source.** If Iconify does not have an appropriate icon, use a clear labeled shape instead. Use a different icon source only with explicit user approval and document its provenance/license.
+
+Example retrieval from the repository root:
 
 ```bash
-# 1. uv (Python tool runner)
-uv --version
-
-# 2. Graphviz system binary (REQUIRED to render PNG/JPG/SVG/PDF)
-dot -V
+mkdir -p docs/assets/icons
+curl --fail --location --silent --show-error \
+  --proto '=https' --proto-redir '=https' \
+  'https://api.iconify.design/mdi/database.svg?color=%232F6FEB' \
+  --output docs/assets/icons/mdi--database.svg
 ```
 
-The Python `diagrams` package does **not** need to be globally installed when using the recommended `uv run --with diagrams` command below.
+For **D2**, reference the vendored SVG relative to the `.d2` source file. With the standard layout (`docs/src/*.d2` and `docs/assets/icons/*`), use `icon: ../assets/icons/<file>.svg`. For **Excalidraw**, keep the vendored SVG for provenance and embed its bytes as a `data:image/svg+xml;base64,...` entry in the scene's top-level `files`; the corresponding `image` element must reference that file ID. Never use an Iconify URL as an Excalidraw embeddable or external image.
 
-**If something is missing:**
+## D2 toolchain (when selected)
 
-- If `uv` is missing, ask the user how they want Python dependencies handled before installing anything.
-- If `dot -V` fails, Graphviz is missing or unavailable. Ask the user before running any OS package-manager command, especially anything requiring `sudo`.
-- Suggested Graphviz install commands, after explicit user approval:
-  - Fedora/RHEL: `sudo dnf install graphviz`
-  - Debian/Ubuntu: `sudo apt install graphviz`
-  - macOS: `brew install graphviz`
-  - Arch: `sudo pacman -S graphviz`
+Prefer an existing project-local D2 workflow. Otherwise verify the CLI only after D2 is selected:
 
-Do not proceed to render until `dot -V` succeeds — without the Graphviz binary, `diagrams` fails with `ExecutableNotFound: failed to execute PosixPath('dot')`. If Graphviz cannot be installed, tell the user the exact command they need to run and stop rendering.
+```bash
+d2 version
+d2 layout
+```
 
-## Python diagrams authoring and output conventions
+If `d2` is missing, tell the user D2 is required for the selected path, give the matching official installation instructions below, and ask them to install it. Do not run the installation yourself or silently fall back to Excalidraw.
 
-- **Source code** lives in `docs/src/` (one file per diagram, e.g. `docs/src/system_context.py`).
-- **Rendered PNGs** live in `docs/assets/` (e.g. `docs/assets/system_context.png`).
-- **Always run from the repository root**, because the `filename` below is resolved relative to the current directory.
-- Always set `show=False` (never auto-open) and `outformat="png"`.
-- The `filename` value has **no extension**; PNG is added automatically.
-- Create the output directory first: `mkdir -p docs/assets`.
-- If the project already has an established docs layout, adapt the paths to match it and stay consistent.
-- Keep diagrams readable: use `direction`, `graph_attr` (e.g. `fontsize`, `bgcolor`, `pad`), and `Cluster` to group related nodes. Avoid wall-of-icons diagrams; split into multiple focused views instead.
+- **macOS (Homebrew):** `brew install d2`
+- **Windows:** use the `.msi` from the [official D2 releases](https://github.com/terrastruct/d2/releases), or use `scoop install main/d2` / `choco install d2` when that package manager is already trusted.
+- **From source with Go 1.20+:** `go install oss.terrastruct.com/d2@latest`.
+- **Linux or WSL (official installer):** download the script without executing it, inspect it, then run its dry-run mode before deciding whether to execute it:
+
+  ```bash
+  install_script="$(mktemp "${TMPDIR:-/tmp}/d2-install.XXXXXX")"
+  trap 'rm -f "$install_script"' EXIT
+  curl --fail --location --silent --show-error \
+    --proto '=https' --proto-redir '=https' \
+    https://d2lang.com/install.sh --output "$install_script"
+  less "$install_script"
+  sh "$install_script" --dry-run
+  # Only if the inspected script and dry-run output are acceptable:
+  sh "$install_script"
+  ```
+
+Prefer the user's existing trusted package manager. Explain that the official shell installer does not verify release signatures; downloading it is not verification, so the user must inspect it before execution. Use the interactive question tool to offer: **I will install it and tell you when ready** or **switch to Excalidraw**. Wait for confirmation, then rerun `d2 version` and `d2 layout` before continuing.
+
+D2's PNG exporter uses Playwright and a headless browser; its first PNG export can download browser dependencies. Ask before that download. If PNG export fails, report the exact D2/Playwright error and consult current official D2 releases/issues before proposing a workaround; a project-local Playwright install may not satisfy D2's pinned Playwright-Go runtime. If PNG export cannot be enabled, keep the `.d2` source, render a bundled SVG for validation with `d2 --bundle=true <input>.d2 <output>.svg`, and tell the user exactly what remains before PNG completion.
+
+## D2 authoring and output conventions
+
+- **Editable source** lives in `docs/src/` (one `.d2` file per diagram, e.g. `docs/src/system_context.d2`).
+- **Rendered PNGs** live in `docs/assets/` with the matching basename (e.g. `docs/assets/system_context.png`).
+- **Vendored icons** live in `docs/assets/icons/` and follow the Iconify sourcing rules above.
+- **Always run CLI commands from the repository root** so input and output paths are consistent. D2 resolves each local icon path relative to the `.d2` source file, not the shell working directory; for `docs/src/*.d2`, use `../assets/icons/<file>.svg`.
+- Create output directories first: `mkdir -p docs/src docs/assets/icons`.
+- If the project already has an established docs layout, adapt the paths and remain consistent.
+- Start with D2's default `dagre` layout. Use `d2 layout` to see installed engines, and switch to `elk` or another available engine only when visual inspection shows a concrete layout improvement. Do not assume optional engines are installed.
+- Set `direction: right` for context/deployment views and `direction: down` for sequential flows unless inspection shows another direction is clearer.
+- Use containers only for meaningful trust, ownership, network, deployment, or domain boundaries. Avoid wall-of-icons diagrams; split crowded views.
+- Prefer shared D2 classes or variables for repeated styling so the diagram set has consistent colors, strokes, fonts, and spacing.
+- Format and validate source before rendering. Always use the D2 process exit status as the success signal; D2 can leave a partial output after a rendering error.
 
 ## Diagram visual-quality standard
 
 - **Render and inspect every PNG.** After rendering, use the environment's image-reading capability (for example, `read` on each PNG) to inspect the actual output. A successful renderer exit code is not sufficient.
-- **Iterate until the output passes.** Regenerate any diagram with clipped, overlapping, or ambiguous labels; lines crossing labels; unnecessary edge crossings; excessive empty space; or unreadable text at normal document width. Do not report diagrams as complete before this check passes.
-- **Use a consistent visual baseline.** Default to a white background and consistent typography, colors, line weight, padding, and spacing across the diagram set. For Python diagrams, use explicit `node_attr` font settings, `splines="ortho"`, deliberate `nodesep`/`ranksep`, and shared `GRAPH_ATTR`/`NODE_ATTR` constants or a helper.
+- **Iterate until the output passes.** Regenerate any diagram with clipped, overlapping, or ambiguous labels; lines crossing labels; unnecessary edge crossings; excessive empty space; inconsistent icon scale; or unreadable text at normal document width. Do not report diagrams as complete before this check passes.
+- **Use a consistent visual baseline.** Default to a white background and consistent typography, colors, line weight, padding, spacing, Iconify set, and icon treatment across the diagram set. In D2, centralize repeated styling and use a fixed layout/theme/render command for related diagrams.
 - **Keep labels short.** Use at most two concise lines per node. Put implementation detail in the document, not in icon captions. Prefer a node title over a title plus a long subtitle.
-- **Use meaningful icons carefully.** In Python diagrams, use verified provider/framework icons and avoid `Blank` when an appropriate icon exists. In Excalidraw, use simple labeled shapes by default; only embed icons that remain legible and whose source is trusted.
-- **Choose layouts intentionally.** Start with left-to-right context/deployment views and top-to-bottom sequential flows, then use visual inspection to choose the clearer layout. Use containers/clusters only for meaningful boundaries; split diagrams rather than overcrowding them.
+- **Use meaningful icons carefully.** Source every icon through Iconify and follow its license. Use a consistent visual family and color treatment; preserve brand colors only when they carry meaning. Prefer simple labeled shapes over forced or low-quality icon matches.
+- **Choose layouts intentionally.** Start with left-to-right context/deployment views and top-to-bottom sequential flows, then use visual inspection to choose the clearer layout. Use containers only for meaningful boundaries; split diagrams rather than overcrowding them.
 - **Limit visual complexity.** One responsibility per node, only the edges needed for the view's purpose, and split a diagram when it cannot remain clear with short labels.
 
-## Run Python diagrams
+## Run D2
 
 ```bash
-# Render one diagram file without installing diagrams globally.
-uv run --no-project --with diagrams python docs/src/system_context.py
+# Format and validate one diagram.
+d2 fmt docs/src/system_context.d2
+d2 validate docs/src/system_context.d2
 
-# Render all diagram source files.
-for f in docs/src/*.py; do
-  uv run --no-project --with diagrams python "$f"
+# Render a deterministic PNG from the repository root.
+d2 --layout=dagre --theme=0 --pad=48 --scale=2 \
+  docs/src/system_context.d2 docs/assets/system_context.png
+
+# Format, validate, and render every diagram.
+for f in docs/src/*.d2; do
+  d2 fmt "$f" && d2 validate "$f" || exit 1
+  d2 --layout=dagre --theme=0 --pad=48 --scale=2 \
+    "$f" "docs/assets/$(basename "${f%.d2}").png" || exit 1
 done
 ```
 
-If the project already manages Python dependencies and includes `diagrams`, use the project's normal Python command instead. The official `diagrams` workflow is to execute the Python file directly.
+Keep the layout, theme, padding, and scale consistent across a diagram set. Change them only after inspecting the result, and use the same updated command for every related diagram.
 
-### Verified Python quick reference (correct import paths for diagrams 0.25.x)
+### D2 quick reference
 
-```python
-# docs/src/system_context.py
-from diagrams import Diagram
-from diagrams.aws.compute import EC2
-from diagrams.aws.database import RDS
-from diagrams.aws.network import ELB
-from diagrams.onprem.client import Users
+```d2
+# docs/src/system_context.d2
+direction: right
 
-GRAPH_ATTR = {
-    "fontsize": "24",
-    "fontname": "Sans-Serif",
-    "bgcolor": "white",
-    "pad": "0.6",
-    "nodesep": "0.9",
-    "ranksep": "1.0",
-    "splines": "ortho",
+users: End users {
+  shape: person
 }
-NODE_ATTR = {"fontname": "Sans-Serif", "fontsize": "15"}
 
-with Diagram(
-    "System Context",
-    filename="docs/assets/system_context",  # -> docs/assets/system_context.png
-    outformat="png",
-    show=False,
-    direction="LR",
-    graph_attr=GRAPH_ATTR,
-    node_attr=NODE_ATTR,
-):
-    Users("End Users") >> ELB("Load Balancer") >> EC2("Web App") >> RDS("Primary DB")
+platform: Product platform {
+  style: {
+    fill: "#EFF6FF"
+    stroke: "#2F6FEB"
+    border-radius: 12
+  }
+
+  web: Web app {
+    icon: ../assets/icons/simple-icons--react.svg
+  }
+  api: API
+  db: Primary database {
+    icon: ../assets/icons/mdi--database.svg
+  }
+
+  web -> api: HTTPS/JSON
+  api -> db: SQL
+}
+
+users -> platform.web: HTTPS
 ```
 
-Grouping with `Cluster` (also verified import paths):
+D2 also supports standalone image shapes:
 
-```python
-# docs/src/container.py
-from diagrams import Diagram, Cluster
-from diagrams.aws.compute import EC2
-from diagrams.aws.database import RDS
-from diagrams.aws.network import ELB
-from diagrams.aws.storage import S3
-from diagrams.onprem.client import Users
-
-GRAPH_ATTR = {
-    "fontsize": "24",
-    "fontname": "Sans-Serif",
-    "bgcolor": "white",
-    "pad": "0.6",
-    "nodesep": "0.9",
-    "ranksep": "1.0",
-    "splines": "ortho",
+```d2
+provider: {
+  shape: image
+  icon: ../assets/icons/simple-icons--amazonwebservices.svg
 }
-NODE_ATTR = {"fontname": "Sans-Serif", "fontsize": "15"}
-
-with Diagram(
-    "Container View",
-    filename="docs/assets/container",
-    outformat="png",
-    show=False,
-    direction="TB",
-    graph_attr=GRAPH_ATTR,
-    node_attr=NODE_ATTR,
-):
-    users = Users("End Users")
-    lb = ELB("Load Balancer")
-    with Cluster("Application Tier"):
-        web = [EC2("web-1"), EC2("web-2")]
-    db = RDS("Primary DB")
-    assets = S3("Static Assets")
-
-    users >> lb >> web >> db
-    web >> assets
 ```
 
-Node import paths come from providers such as `diagrams.aws.*`, `diagrams.onprem.*`, `diagrams.gcp.*`, `diagrams.azure.*`, `diagrams.k8s.*`, and `diagrams.generic.*`. When unsure of an exact class name, verify it against the installed package rather than guessing.
+Use standalone image shapes sparingly because a short label is usually clearer in architecture diagrams. Verify D2 syntax and renderer behavior against the [official D2 documentation](https://d2lang.com/tour/) rather than guessing.
 
 ## Excalidraw authoring and PNG rendering (when selected)
 
@@ -204,11 +210,13 @@ Node import paths come from providers such as `diagrams.aws.*`, `diagrams.onprem
 
 - Keep editable scenes in `docs/src/` as one `.excalidraw` file per diagram, for example `docs/src/system_context.excalidraw`.
 - Render PNGs to `docs/assets/` with the matching basename, for example `docs/assets/system_context.png`.
+- Keep vendored Iconify SVGs in `docs/assets/icons/`, even though the scene also embeds them, so provenance and the exact source asset remain reviewable.
 - Treat the `.excalidraw` file as the source of truth; never edit the generated PNG directly.
 - Use a white `viewBackgroundColor`, enable `exportBackground`, disable dark-mode export unless requested, and use consistent export padding and scale across the diagram set.
 - Preserve top-level `type`, `version`, `source`, `elements`, `appState`, and `files`. Keep stable element IDs/seeds when generating JSON so unchanged diagrams do not churn.
-- Generated scenes must import successfully into Excalidraw. Embedded images/icons belong in `files`; do not use external image URLs or embeddables for a self-contained architecture artifact.
-- Prefer short labels, simple rounded shapes, deliberate containers, and directional arrows. Keep the hand-drawn style readable rather than decorative.
+- Generated scenes must import successfully into Excalidraw. Embed each sanitized Iconify SVG in `files` as a base64 `data:image/svg+xml` URL with `mimeType: "image/svg+xml"`, and have its image element reference the matching file ID. Do not use external image URLs or embeddables.
+- Prefer the installed Excalidraw API/import workflow for image elements and file IDs instead of inventing undocumented JSON fields. If scene JSON is generated directly, compare it with the installed version's schema/types and prove it by reopening and exporting the scene.
+- Prefer short labels, simple rounded shapes, deliberate containers, and directional arrows. Keep the hand-drawn style readable rather than decorative, and follow the shared Iconify consistency and licensing rules.
 
 ### Conditional toolchain check
 
@@ -277,11 +285,11 @@ Pin the Excalidraw package, browser revision, OS/container, fonts, locale, viewp
    - Identify functional and non-functional requirements (scale, latency, availability, security, cost, compliance).
 
 2. **Choose the diagram tool.**
-   - Ask the user to pick **Python `diagrams` + Graphviz** or **Excalidraw**, unless they already explicitly selected one.
+   - Ask the user to pick **D2** or **Excalidraw**, unless they already explicitly selected one.
    - Explain the short trade-off and record the choice. Do not silently infer it from personal preference.
 
 3. **Verify only the selected toolchain.**
-   - For Python diagrams, run `uv --version` and `dot -V`. Ask before any install, and do not render until Graphviz is available.
+   - For D2, run `d2 version` and `d2 layout`. If D2 is missing, give the official instructions above, ask the user to install it, and wait for confirmation; do not install it yourself. Ask before a first-time Playwright/Chromium download, and do not claim PNG completion until PNG export works.
    - For Excalidraw, identify the approved rendering method, verify its editor/browser/Node requirements, and ask before any global/system install or browser download.
 
 4. **Discovery (research-first).**
@@ -298,7 +306,8 @@ Pin the Excalidraw package, browser revision, OS/container, fonts, locale, viewp
    - Use the interactive question tool to confirm the direction and resolve key decisions **before** drafting the full document. This is the "during the final proposal" clarification point.
 
 7. **Draft the diagrams and document.**
-   - Draft the intended diagram set, component labels, and data flows without writing files yet.
+   - Draft the intended diagram set, component labels, data flows, and where icons would materially improve recognition, without writing files yet.
+   - For proposed icons, identify candidate Iconify IDs/set, source and license details, and a labeled-shape fallback before review.
    - Draft the document at the chosen detail level (see structure below), including the planned diagram references.
    - Keep diagrams consistent with each other and with the prose.
 
@@ -307,8 +316,10 @@ Pin the Excalidraw package, browser revision, OS/container, fonts, locale, viewp
    - Get explicit approval, or revise until approved.
 
 9. **Write, render, and inspect the document and diagrams.**
-   - After approval, write the selected editable source format (`.py` or `.excalidraw`) in `docs/src/`, render PNGs to `docs/assets/`, and reference them from the document.
-   - For Excalidraw, validate that every source scene imports successfully before accepting its PNG.
+   - After approval, verify each approved Iconify ID, icon-set license/attribution, downloaded SVG safety, and local/self-contained integration.
+   - Write the selected editable source format (`.d2` or `.excalidraw`) in `docs/src/`, vendor approved Iconify SVGs in `docs/assets/icons/`, render PNGs to `docs/assets/`, and reference them from the document.
+   - Add the `Diagram icon sources` provenance/license section when any icons are used.
+   - For D2, format and validate each source, then check the render exit status. For Excalidraw, validate that every source scene imports successfully before accepting its PNG.
    - Inspect every rendered PNG with the environment's image-reading tool and apply the Diagram visual-quality standard. Iterate on the source and re-render until it passes.
    - Write the document to the agreed location and regenerate any diagrams touched by review changes.
 
@@ -371,7 +382,7 @@ Ask where to save the document before writing. Default options:
 - `docs/architecture.md`
 - `docs/architecture/<name>.md`
 
-Keep diagram sources and assets next to the document using the `docs/src/` and `docs/assets/` convention (adapt to an existing docs layout if one exists). Use `.py` sources for Python diagrams or `.excalidraw` sources for Excalidraw.
+Keep diagram sources and assets next to the document using the `docs/src/` and `docs/assets/` convention (adapt to an existing docs layout if one exists). Use `.d2` sources for D2 or `.excalidraw` sources for Excalidraw, and keep vendored Iconify SVGs in `docs/assets/icons/`.
 
 ## Quality bar
 
@@ -389,12 +400,13 @@ A good architecture design produced by this skill should:
 
 - Design only — do not implement the system while this skill is active unless the user changes the task.
 - Use the interactive question tool to clarify during discovery and to confirm the direction before the final proposal.
-- Ask the user to pick Python `diagrams`/Graphviz or Excalidraw unless they explicitly selected one already.
+- Ask the user to pick D2 or Excalidraw unless they explicitly selected one already.
 - Ask the user to pick a detail level (Early Draft / POC Ready / Implementation Ready) before drafting.
 - Research first: use `web_search` / `fetch_content` for current facts instead of relying on memory; cite sources.
 - Prefer simple and standard; only choose complex when a concrete need forces it, and state that need.
-- Verify only the selected diagram toolchain before rendering. Ask before global/system installs or Chromium downloads.
-- Keep editable diagram sources in `docs/src/` and PNGs in `docs/assets/`. For Python diagrams, run from the repo root and set `show=False`; for Excalidraw, preserve importable `.excalidraw` scenes and explicit export settings.
+- Verify only the selected diagram toolchain before rendering. Never install missing D2 yourself; give the user instructions and wait for confirmation. Ask before any other global/system install or Chromium download.
+- Source every needed icon from Iconify, verify its icon-set license, vendor and inspect the SVG, record provenance, and fall back to a labeled shape rather than silently using another source.
+- Keep editable diagram sources in `docs/src/`, vendored icons in `docs/assets/icons/`, and PNGs in `docs/assets/`. For D2, run from the repo root and validate `.d2` sources; for Excalidraw, preserve importable, self-contained scenes and explicit export settings.
 - Visually inspect every rendered PNG and iterate on source/layout until labels, edges, spacing, and icons meet the Diagram visual-quality standard.
 - Regenerate diagrams whenever the architecture changes materially, and keep the document in sync.
 - Do not write the document, diagram source files, or rendered assets until the user has reviewed the draft and approved it.

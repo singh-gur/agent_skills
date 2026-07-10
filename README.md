@@ -87,11 +87,12 @@ What it does:
 
 - researches current best practices via web search/fetch instead of relying on memory
 - clarifies requirements interactively at discovery and before the final proposal
-- asks the user to choose Python `diagrams`/Graphviz or Excalidraw, then pick a detail level: Early Draft, POC Ready, or Implementation Ready
+- asks the user to choose D2 or Excalidraw, then pick a detail level: Early Draft, POC Ready, or Implementation Ready
 - prefers simple, standard, boring technology; only chooses complex when a concrete need forces it
-- supports Python diagram sources and editable `.excalidraw` scenes, with PNG output for both
+- supports editable `.d2` sources and `.excalidraw` scenes, with PNG output when the selected renderer's browser dependencies are available
+- sources needed icons from Iconify, vendors them locally, and records their provenance and icon-set licenses
 - includes a pinned, network-blocked Playwright renderer that uses Excalidraw's official `exportToBlob` API
-- keeps diagram sources in `docs/src/` and PNGs in `docs/assets/` and regenerates them on material change
+- keeps diagram sources in `docs/src/`, icons in `docs/assets/icons/`, and PNGs in `docs/assets/`, regenerating them on material change
 
 Skill path in this repo:
 
