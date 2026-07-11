@@ -122,6 +122,32 @@ Skill path in this repo:
 
 - `draw-diagram/SKILL.md`
 
+### `spec-writer`
+
+Turns a raw request into an approved, evidence-backed `SPECS.md` before architecture, planning, or implementation.
+
+Use it when you need help with:
+
+- refining an incomplete or ambiguous feature request
+- researching repository and external constraints with subagents
+- eliciting requirements through focused user Q&A
+- defining testable requirements, acceptance criteria, scope, and non-goals
+- producing a traceable specification for stakeholder approval
+
+What it does:
+
+- refines the raw ask without silently inventing requirements
+- adapts output using domain profiles and Concept, Build Ready, or High Assurance detail levels
+- delegates structured parallel research and stakeholder-specific verification to read-only subagents
+- grades evidence, tracks source freshness, and asks targeted clarification questions after research
+- enforces measurable acceptance criteria and explicit approval quality gates
+- supports versioned amendments, deferred design decisions, and change history
+- writes `SPECS.md` only after approval, with stable IDs and a traceability matrix
+
+Skill path in this repo:
+
+- `spec-writer/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `super-plan` skill from this repository:
@@ -157,11 +183,17 @@ npx skills add singh-gur/agent_skills --skill arch-design -g -y
 
 Agent Skills does not provide a formal dependency resolver, so both commands are required.
 
+Install the `spec-writer` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill spec-writer -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
 - `singh-gur/agent_skills` is the short GitHub reference for this repository
-- `--skill super-plan` selects the skill to install
+- `--skill <name>` selects the requested skill, such as `super-plan` or `spec-writer`
 - `-g` installs it globally for your local setup
 - `-y` auto-confirms the install
 
@@ -174,6 +206,7 @@ Current skills in this repo:
 - `caveman`
 - `arch-design`
 - `draw-diagram`
+- `spec-writer`
 
 ## Source layout
 
@@ -195,6 +228,14 @@ Current skills in this repo:
 │           └── renderer-browser.js
 ├── simple-plan/
 │   └── SKILL.md
+├── spec-writer/
+│   ├── SKILL.md
+│   ├── references/
+│   │   ├── quality-rubric.md
+│   │   ├── research-evidence.md
+│   │   └── spec-profiles.md
+│   └── templates/
+│       └── SPECS.template.md
 └── super-plan/
     └── SKILL.md
 ```
