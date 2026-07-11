@@ -1,5 +1,5 @@
 {
-  "name": "@local/arch-design-excalidraw-renderer",
+  "name": "@local/draw-diagram-excalidraw-renderer",
   "version": "1.0.0",
   "description": "Pinned local renderer for .excalidraw scenes",
   "scripts": {

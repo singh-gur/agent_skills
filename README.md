@@ -74,7 +74,7 @@ Skill path in this repo:
 
 ### `arch-design`
 
-Produces a well-reasoned architecture design document with source-controlled, editable diagrams rendered to PNG.
+Produces a well-reasoned architecture design document and delegates diagram creation to the companion `draw-diagram` skill.
 
 Use it when you need help with:
 
@@ -87,16 +87,40 @@ What it does:
 
 - researches current best practices via web search/fetch instead of relying on memory
 - clarifies requirements interactively at discovery and before the final proposal
-- asks the user to choose D2 or Excalidraw, then pick a detail level: Early Draft, POC Ready, or Implementation Ready
-- prefers simple, standard, boring technology; only chooses complex when a concrete need forces it
-- supports editable `.d2` sources and `.excalidraw` scenes, with PNG output when the selected renderer's browser dependencies are available
-- sources needed icons from Iconify, vendors them locally, and records their provenance and icon-set licenses
-- includes a pinned, network-blocked Playwright renderer that uses Excalidraw's official `exportToBlob` API
-- keeps diagram sources in `docs/src/`, icons in `docs/assets/icons/`, and PNGs in `docs/assets/`, regenerating them on material change
+- offers Early Draft, POC Ready, and Implementation Ready detail levels
+- prefers simple, standard, boring technology; only chooses complexity when a concrete need forces it
+- defines the architecture semantics and briefs for required diagrams
+- loads `draw-diagram` as the canonical workflow for tool selection, icons, editable source, rendering, routing, and visual inspection
+- keeps architecture prose and delegated diagram artifacts synchronized on material change
 
 Skill path in this repo:
 
 - `arch-design/SKILL.md`
+
+### `draw-diagram`
+
+Creates polished, editable diagrams without requiring a full architecture-design workflow.
+
+Use it when you need help with:
+
+- architecture, conceptual, component, or data-flow diagrams
+- sequence, control-flow, process, state, or lifecycle diagrams
+- deployment, network, ER/data-model, trust-boundary, migration, or observability views
+- recreating or improving an existing diagram with cleaner layout and routing
+
+What it does:
+
+- recommends Excalidraw first and offers D2 as a text-based alternative
+- preserves editable source and renders Excalidraw PNGs or bundled D2 SVGs
+- uses Iconify icons with local vendoring, safety checks, and license provenance
+- prioritizes visual fidelity, orthogonal connectors, readable spacing, and routes that avoid text and components
+- lets the user choose among installed D2 layout engines after receiving explanations and a recommendation
+- inspects every rendered asset and iterates until semantic and visual quality pass
+- includes its own pinned, network-blocked Excalidraw renderer
+
+Skill path in this repo:
+
+- `draw-diagram/SKILL.md`
 
 ## Install with `npx skills`
 
@@ -118,11 +142,20 @@ Install the `caveman` skill from this repository:
 npx skills add singh-gur/agent_skills --skill caveman -g -y
 ```
 
-Install the `arch-design` skill from this repository:
+Install the standalone `draw-diagram` skill from this repository:
 
 ```bash
+npx skills add singh-gur/agent_skills --skill draw-diagram -g -y
+```
+
+Install `arch-design` together with its required `draw-diagram` companion:
+
+```bash
+npx skills add singh-gur/agent_skills --skill draw-diagram -g -y
 npx skills add singh-gur/agent_skills --skill arch-design -g -y
 ```
+
+Agent Skills does not provide a formal dependency resolver, so both commands are required.
 
 ### Command breakdown
 
@@ -140,6 +173,7 @@ Current skills in this repo:
 - `simple-plan`
 - `caveman`
 - `arch-design`
+- `draw-diagram`
 
 ## Source layout
 
@@ -147,6 +181,10 @@ Current skills in this repo:
 .
 ├── README.md
 ├── arch-design/
+│   └── SKILL.md
+├── caveman/
+│   └── SKILL.md
+├── draw-diagram/
 │   ├── SKILL.md
 │   └── scripts/
 │       └── excalidraw-renderer/
@@ -155,8 +193,6 @@ Current skills in this repo:
 │           ├── package-lock.json
 │           ├── render.mjs
 │           └── renderer-browser.js
-├── caveman/
-│   └── SKILL.md
 ├── simple-plan/
 │   └── SKILL.md
 └── super-plan/
