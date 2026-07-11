@@ -1,6 +1,6 @@
 ---
 name: arch-design
-description: Produces a well-thought-out architecture design document with editable diagrams, rendered as SVG for D2 or PNG for Excalidraw. Researches current best practices, clarifies requirements interactively, and offers three detail levels. Before diagramming, asks the user to choose either D2 or Excalidraw, with Iconify as the source for any icons. Focuses on conceptual, component/data-flow, and control-flow views, plus use-case-specific diagrams. Prefers simple, standard technology unless a concrete need forces complexity. Use for architecture designs, system designs, HLDs, system diagrams, and architecture proposals or ADRs.
+description: Produces a well-thought-out architecture design document with editable diagrams, rendered as PNG for Excalidraw or SVG for D2. Researches current best practices, clarifies requirements interactively, and offers three detail levels. Before diagramming, recommends Excalidraw as the first choice while allowing the user to choose D2, with Iconify as the source for any icons. Focuses on conceptual, component/data-flow, and control-flow views, plus use-case-specific diagrams. Prefers simple, standard technology unless a concrete need forces complexity. Use for architecture designs, system designs, HLDs, system diagrams, and architecture proposals or ADRs.
 compatibility: Requires web research capability. D2 SVG output requires the `d2` CLI. Bundled Excalidraw PNG export requires Node.js ^20.19 or >=22.12 and its pinned Playwright/Chromium renderer. Manual editor export is also supported. Ask before any global/system install or browser download.
 metadata:
   author: gurbakhshish
@@ -29,7 +29,7 @@ Do not use this skill for a single implementation plan with phases (use a planni
 - **Clarify interactively.** Use the environment's interactive question/ask tool (e.g. `ask_user`) to remove ambiguity at two points: (a) during discovery, when missing requirements/constraints would change the design; and (b) before the final proposal, to confirm direction and key decisions. Do not silently assume.
 - **Research first.** For frameworks, services, patterns, limits, pricing, versions, and comparisons, look up current sources via `web_search` / `fetch_content` rather than relying on model memory. Cite sources for claims that depend on them.
 - **Simple and standard by default.** Prefer proven, boring technology and the fewest moving parts that satisfy the requirements. Only introduce complexity when a concrete forcing function demands it, and say what that forcing function is.
-- **User-selected diagram tool.** Ask the user to choose D2 or Excalidraw unless they already explicitly selected one. Preserve editable source (`.d2` or `.excalidraw`), render D2 diagrams as bundled SVGs and Excalidraw diagrams as PNGs, and reference them in the document. Source every non-native icon from Iconify, vendor it locally, and regenerate diagrams whenever the architecture changes materially.
+- **Excalidraw-first, user-selected diagram tool.** Offer Excalidraw as the first and recommended choice, with D2 as the alternative, unless the user already explicitly selected a tool. Preserve editable source (`.d2` or `.excalidraw`), render D2 diagrams as bundled SVGs and Excalidraw diagrams as PNGs, and reference them in the document. Source every non-native icon from Iconify, vendor it locally, and regenerate diagrams whenever the architecture changes materially.
 - **Purpose-driven diagram set.** Center the design on (1) a high-level conceptual/context view, (2) a system component view with recognizable icons and explicit data flow, and (3) control-flow views such as sequence, activity, state, or request-lifecycle diagrams. Include only the views that help the audience, and add deployment, data model, security/trust-boundary, integration, or other diagrams when the use case warrants them.
 - **Review before writing.** Draft the design and intended diagrams, walk the user through them, and only persist document, diagram source, and rendered asset files once they approve (or request edits).
 - **Keep tooling portable where you can.** The interactive-question and web-research capabilities are the point; name the concrete tools (`ask_user`, `web_search`, `fetch_content`) when present, but fall back to the environment's equivalents if those names are unavailable.
@@ -56,10 +56,10 @@ Apply these before proposing anything complex:
 
 Before drafting diagrams, use the interactive question tool to ask the user to pick one:
 
-- **D2** — best for formal architecture views, concise text-based source, automatic layout, and reproducible CLI rendering to bundled SVG. Source files use D2's declarative language.
-- **Excalidraw** — best for editable, collaborative, hand-drawn views and side-by-side design exploration, with PNG rendering. Source files use Excalidraw's open JSON format.
+- **Excalidraw — recommended first choice.** Best for editable, collaborative, visually expressive views; icon-rich component diagrams; and side-by-side design exploration, with PNG rendering. Source files use Excalidraw's open JSON format.
+- **D2 — alternative.** Best when concise text-based source, automatic layout, formal architecture views, and reproducible CLI rendering to bundled SVG are more important. Source files use D2's declarative language.
 
-Recommend the option that best fits the audience, but do not silently choose it. If the user already explicitly requested one, confirm that choice in the proposal rather than asking a redundant question. Use one tool consistently for a diagram set unless the user requests mixed or comparison views.
+Recommend Excalidraw by default. Recommend D2 instead only when the audience, repository workflow, automation needs, or explicit user preference makes its text-based and automatic-layout approach a better fit. Do not silently choose either tool. If the user already explicitly requested one, confirm that choice in the proposal rather than asking a redundant question. Use one tool consistently for a diagram set unless the user requests mixed or comparison views.
 
 ## Iconify icon sourcing (both tools)
 
@@ -125,8 +125,14 @@ Render D2 output directly as SVG because it is the more reliable, portable outpu
 - **Always run CLI commands from the repository root** so input and output paths are consistent. D2 resolves each local icon path relative to the `.d2` source file, not the shell working directory; for `docs/src/*.d2`, use `../assets/icons/<file>.svg`.
 - Create output directories first: `mkdir -p docs/src docs/assets/icons`.
 - If the project already has an established docs layout, adapt the paths and remain consistent.
-- Start with D2's default `dagre` layout. Use `d2 layout` to see installed engines, and switch to `elk` or another available engine only when visual inspection shows a concrete layout improvement. Do not assume optional engines are installed.
-- Set `direction: right` for context/deployment views and `direction: down` for sequential flows unless inspection shows another direction is clearer.
+- **Let the user choose the layout engine.** Run `d2 layout`, present only the engines available in that output, explain the relevant trade-offs, and ask the user to select one before authoring or rendering. Recommend an engine, but do not silently choose it.
+  - **ELK — recommended for most architecture diagrams when available.** A mature, actively maintained hierarchical engine with strong orthogonal routing, container handling, and crossing minimization. Prefer it for component/data-flow views and polished architecture layouts.
+  - **Dagre — recommended for speed and simpler hierarchies.** D2's fast default engine; useful for straightforward directed graphs and quick drafts, but it can produce less refined routing on complex or container-heavy diagrams.
+  - **TALA — recommended for architecture-specific placement control when available.** Designed for software architecture diagrams and supports advanced placement behavior such as per-container direction and position locking. Explain any installation or licensing implications shown by the current toolchain before recommending it.
+  - **Other installed engines.** If `d2 layout` reports another engine, inspect `d2 layout <engine>` and current official documentation, then explain its strengths, limitations, and suitability rather than guessing.
+- Record the selected engine and use it consistently across the diagram set unless the user approves a per-diagram exception. If the recommended engine is unavailable, explain why another installed option is the best fit; never change engines silently.
+- Set `direction: right` for context/deployment views and `direction: down` for sequential flows unless inspection shows another direction is clearer. Favor orthogonal routes and enough spacing to keep edges from crossing labels, icons, components, or container titles whenever the selected engine supports it.
+- Treat visual fidelity as the priority. Adjust direction, spacing, containers, and node placement—or split the view—when needed for a cleaner layout rather than accepting a dense or ambiguous automatic render.
 - Use containers only for meaningful trust, ownership, network, deployment, or domain boundaries. Avoid wall-of-icons diagrams; split crowded views.
 - Prefer shared D2 classes or variables for repeated styling so the diagram set has consistent colors, strokes, fonts, and spacing.
 - Format and validate source before rendering. Always use the D2 process exit status as the success signal; D2 can leave a partial output after a rendering error.
@@ -157,14 +163,17 @@ For every selected diagram:
 d2 fmt docs/src/system_context.d2
 d2 validate docs/src/system_context.d2
 
+# Use the engine selected by the user from `d2 layout`.
+layout_engine="<chosen-layout>"
+
 # Render a deterministic, self-contained SVG from the repository root.
-d2 --bundle=true --layout=dagre --theme=0 --pad=48 \
+d2 --bundle=true --layout="$layout_engine" --theme=0 --pad=48 \
   docs/src/system_context.d2 docs/assets/system_context.svg
 
 # Format, validate, and render every diagram.
 for f in docs/src/*.d2; do
   d2 fmt "$f" && d2 validate "$f" || exit 1
-  d2 --bundle=true --layout=dagre --theme=0 --pad=48 \
+  d2 --bundle=true --layout="$layout_engine" --theme=0 --pad=48 \
     "$f" "docs/assets/$(basename "${f%.d2}").svg" || exit 1
 done
 ```
@@ -227,6 +236,8 @@ Use standalone image shapes sparingly because a short label is usually clearer i
 - Generated scenes must import successfully into Excalidraw. Embed each sanitized Iconify SVG in `files` as a base64 `data:image/svg+xml` URL with `mimeType: "image/svg+xml"`, and have its image element reference the matching file ID. Do not use external image URLs or embeddables.
 - Prefer the installed Excalidraw API/import workflow for image elements and file IDs instead of inventing undocumented JSON fields. If scene JSON is generated directly, compare it with the installed version's schema/types and prove it by reopening and exporting the scene.
 - Prefer short labels, simple rounded shapes, deliberate containers, and directional arrows. Keep the hand-drawn style readable rather than decorative, and follow the shared Iconify consistency and licensing rules.
+- Prefer elbow/orthogonal arrows over straight or sharply angled arrows. Route connectors around labels, icons, nodes, and container titles whenever possible; do not allow an arrow to cross text or pass through a component when a clear route can avoid it.
+- Treat visual fidelity as the priority. Favor clear spacing, deliberate alignment, readable routing, and polished composition over compactness, generation convenience, or minimizing canvas size. Reposition components or enlarge the diagram when needed to preserve clarity.
 
 ### Conditional toolchain check
 
@@ -295,11 +306,11 @@ Pin the Excalidraw package, browser revision, OS/container, fonts, locale, viewp
    - Identify functional and non-functional requirements (scale, latency, availability, security, cost, compliance).
 
 2. **Choose the diagram tool.**
-   - Ask the user to pick **D2** or **Excalidraw**, unless they already explicitly selected one.
-   - Explain the short trade-off and record the choice. Do not silently infer it from personal preference.
+   - Ask the user to pick **Excalidraw (recommended)** or **D2**, unless they already explicitly selected one.
+   - Present Excalidraw first and recommend it by default; explain the short trade-off and record the choice. Recommend D2 when concrete workflow or audience needs favor it. Do not silently choose.
 
 3. **Verify only the selected toolchain.**
-   - For D2, run `d2 version` and `d2 layout`. If D2 is missing, give the official instructions above, ask the user to install it, and wait for confirmation; do not install it yourself. Render and validate bundled SVG output; D2 does not require a browser for this workflow.
+   - For D2, run `d2 version` and `d2 layout`. If D2 is missing, give the official instructions above, ask the user to install it, and wait for confirmation; do not install it yourself. Present the installed layout engines with a concise explanation and recommendation, then ask the user to choose one. Inspect `d2 layout <engine>` and official documentation for unfamiliar options. Record the choice and use it for bundled SVG rendering; D2 does not require a browser for this workflow.
    - For Excalidraw, identify the approved rendering method, verify its editor/browser/Node requirements, and ask before any global/system install or browser download.
 
 4. **Discovery (research-first).**
@@ -410,11 +421,11 @@ A good architecture design produced by this skill should:
 
 - Design only — do not implement the system while this skill is active unless the user changes the task.
 - Use the interactive question tool to clarify during discovery and to confirm the direction before the final proposal.
-- Ask the user to pick D2 or Excalidraw unless they explicitly selected one already.
+- Ask the user to pick Excalidraw (recommended first choice) or D2 unless they explicitly selected one already.
 - Ask the user to pick a detail level (Early Draft / POC Ready / Implementation Ready) before drafting.
 - Research first: use `web_search` / `fetch_content` for current facts instead of relying on memory; cite sources.
 - Prefer simple and standard; only choose complex when a concrete need forces it, and state that need.
-- Verify only the selected diagram toolchain before rendering. Never install missing D2 yourself; give the user instructions and wait for confirmation. Ask before any other global/system install or Chromium download.
+- Verify only the selected diagram toolchain before rendering. Never install missing D2 yourself; give the user instructions and wait for confirmation. When D2 is selected, list the installed layout engines, explain and recommend the suitable options, and let the user choose; never silently select or switch engines. Ask before any other global/system install or Chromium download.
 - Source every needed icon from Iconify, verify its icon-set license, vendor and inspect the SVG, record provenance, and fall back to a labeled shape rather than silently using another source.
 - Keep editable diagram sources in `docs/src/`, vendored icons in `docs/assets/icons/`, and rendered assets in `docs/assets/`. For D2, render bundled SVGs from the repo root and validate `.d2` sources; for Excalidraw, preserve importable, self-contained scenes and explicit PNG export settings.
 - Build the diagram set around a high-level conceptual view, a component/data-flow view with useful icons, and appropriate control-flow views, then add only the use-case-specific diagrams that answer material questions.
