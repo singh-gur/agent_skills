@@ -1,7 +1,7 @@
 ---
 name: arch-design
-description: Produces a well-thought-out architecture design document with editable, PNG-rendered diagrams. Researches current best practices, clarifies requirements interactively, and offers three detail levels. Before diagramming, asks the user to choose either D2 or Excalidraw, with Iconify as the source for any icons. Prefers simple, standard technology unless a concrete need forces complexity. Use for architecture designs, system designs, HLDs, system diagrams, and architecture proposals or ADRs.
-compatibility: Requires web research capability. D2 output requires the `d2` CLI; PNG export can require Playwright/Chromium. Bundled Excalidraw PNG export requires Node.js ^20.19 or >=22.12 and its pinned Playwright/Chromium renderer. Manual editor export is also supported. Ask before any global/system install or browser download.
+description: Produces a well-thought-out architecture design document with editable diagrams, rendered as SVG for D2 or PNG for Excalidraw. Researches current best practices, clarifies requirements interactively, and offers three detail levels. Before diagramming, asks the user to choose either D2 or Excalidraw, with Iconify as the source for any icons. Focuses on conceptual, component/data-flow, and control-flow views, plus use-case-specific diagrams. Prefers simple, standard technology unless a concrete need forces complexity. Use for architecture designs, system designs, HLDs, system diagrams, and architecture proposals or ADRs.
+compatibility: Requires web research capability. D2 SVG output requires the `d2` CLI. Bundled Excalidraw PNG export requires Node.js ^20.19 or >=22.12 and its pinned Playwright/Chromium renderer. Manual editor export is also supported. Ask before any global/system install or browser download.
 metadata:
   author: gurbakhshish
   sources: https://d2lang.com, https://iconify.design, and https://excalidraw.com
@@ -29,7 +29,8 @@ Do not use this skill for a single implementation plan with phases (use a planni
 - **Clarify interactively.** Use the environment's interactive question/ask tool (e.g. `ask_user`) to remove ambiguity at two points: (a) during discovery, when missing requirements/constraints would change the design; and (b) before the final proposal, to confirm direction and key decisions. Do not silently assume.
 - **Research first.** For frameworks, services, patterns, limits, pricing, versions, and comparisons, look up current sources via `web_search` / `fetch_content` rather than relying on model memory. Cite sources for claims that depend on them.
 - **Simple and standard by default.** Prefer proven, boring technology and the fewest moving parts that satisfy the requirements. Only introduce complexity when a concrete forcing function demands it, and say what that forcing function is.
-- **User-selected diagram tool.** Ask the user to choose D2 or Excalidraw unless they already explicitly selected one. Preserve editable source (`.d2` or `.excalidraw`), render PNGs, and reference them in the document. Source every non-native icon from Iconify, vendor it locally, and regenerate diagrams whenever the architecture changes materially.
+- **User-selected diagram tool.** Ask the user to choose D2 or Excalidraw unless they already explicitly selected one. Preserve editable source (`.d2` or `.excalidraw`), render D2 diagrams as bundled SVGs and Excalidraw diagrams as PNGs, and reference them in the document. Source every non-native icon from Iconify, vendor it locally, and regenerate diagrams whenever the architecture changes materially.
+- **Purpose-driven diagram set.** Center the design on (1) a high-level conceptual/context view, (2) a system component view with recognizable icons and explicit data flow, and (3) control-flow views such as sequence, activity, state, or request-lifecycle diagrams. Include only the views that help the audience, and add deployment, data model, security/trust-boundary, integration, or other diagrams when the use case warrants them.
 - **Review before writing.** Draft the design and intended diagrams, walk the user through them, and only persist document, diagram source, and rendered asset files once they approve (or request edits).
 - **Keep tooling portable where you can.** The interactive-question and web-research capabilities are the point; name the concrete tools (`ask_user`, `web_search`, `fetch_content`) when present, but fall back to the environment's equivalents if those names are unavailable.
 
@@ -55,8 +56,8 @@ Apply these before proposing anything complex:
 
 Before drafting diagrams, use the interactive question tool to ask the user to pick one:
 
-- **D2** — best for formal architecture views, concise text-based source, automatic layout, and reproducible CLI rendering. Source files use D2's declarative language.
-- **Excalidraw** — best for editable, collaborative, hand-drawn views and side-by-side design exploration. Source files use Excalidraw's open JSON format.
+- **D2** — best for formal architecture views, concise text-based source, automatic layout, and reproducible CLI rendering to bundled SVG. Source files use D2's declarative language.
+- **Excalidraw** — best for editable, collaborative, hand-drawn views and side-by-side design exploration, with PNG rendering. Source files use Excalidraw's open JSON format.
 
 Recommend the option that best fits the audience, but do not silently choose it. If the user already explicitly requested one, confirm that choice in the proposal rather than asking a redundant question. Use one tool consistently for a diagram set unless the user requests mixed or comparison views.
 
@@ -114,12 +115,12 @@ If `d2` is missing, tell the user D2 is required for the selected path, give the
 
 Prefer the user's existing trusted package manager. Explain that the official shell installer does not verify release signatures; downloading it is not verification, so the user must inspect it before execution. Use the interactive question tool to offer: **I will install it and tell you when ready** or **switch to Excalidraw**. Wait for confirmation, then rerun `d2 version` and `d2 layout` before continuing.
 
-D2's PNG exporter uses Playwright and a headless browser; its first PNG export can download browser dependencies. Ask before that download. If PNG export fails, report the exact D2/Playwright error and consult current official D2 releases/issues before proposing a workaround; a project-local Playwright install may not satisfy D2's pinned Playwright-Go runtime. If PNG export cannot be enabled, keep the `.d2` source, render a bundled SVG for validation with `d2 --bundle=true <input>.d2 <output>.svg`, and tell the user exactly what remains before PNG completion.
+Render D2 output directly as SVG because it is the more reliable, portable output path and preserves vector quality. Always use `--bundle=true` so vendored icons are embedded and the rendered asset is self-contained. Do not render D2 diagrams as PNG unless the user explicitly requests an additional raster copy.
 
 ## D2 authoring and output conventions
 
 - **Editable source** lives in `docs/src/` (one `.d2` file per diagram, e.g. `docs/src/system_context.d2`).
-- **Rendered PNGs** live in `docs/assets/` with the matching basename (e.g. `docs/assets/system_context.png`).
+- **Rendered SVGs** live in `docs/assets/` with the matching basename (e.g. `docs/assets/system_context.svg`).
 - **Vendored icons** live in `docs/assets/icons/` and follow the Iconify sourcing rules above.
 - **Always run CLI commands from the repository root** so input and output paths are consistent. D2 resolves each local icon path relative to the `.d2` source file, not the shell working directory; for `docs/src/*.d2`, use `../assets/icons/<file>.svg`.
 - Create output directories first: `mkdir -p docs/src docs/assets/icons`.
@@ -130,9 +131,18 @@ D2's PNG exporter uses Playwright and a headless browser; its first PNG export c
 - Prefer shared D2 classes or variables for repeated styling so the diagram set has consistent colors, strokes, fonts, and spacing.
 - Format and validate source before rendering. Always use the D2 process exit status as the success signal; D2 can leave a partial output after a rendering error.
 
-## Diagram visual-quality standard
+## Diagram selection and visual-quality standard
 
-- **Render and inspect every PNG.** After rendering, use the environment's image-reading capability (for example, `read` on each PNG) to inspect the actual output. A successful renderer exit code is not sufficient.
+Choose diagrams by the questions they answer, not by filling a fixed quota:
+
+- **High-level conceptual/context diagram:** show the system's purpose, actors, external systems, major boundaries, and primary interactions without implementation detail.
+- **System component and data-flow diagram:** show major components, their responsibilities and boundaries, and labeled data movement (direction, protocol/event, and important stores). Use coherent Iconify icons where they materially improve component recognition; keep labels so icons are never the only carrier of meaning.
+- **Control-flow diagram(s):** show important runtime behavior with the clearest notation for the use case—typically sequence diagrams for cross-component interactions, activity/flow diagrams for branching workflows, state diagrams for lifecycles, or request/event-flow diagrams for processing paths. Cover critical happy paths and meaningful failure or retry paths when relevant.
+- **Use-case-specific diagrams:** add deployment/topology, ER/data model, security/trust-boundary, network, integration, migration, resilience/failure, or observability views only when they answer a material design question. Omit irrelevant views and split overloaded diagrams.
+
+For every selected diagram:
+
+- **Render and inspect every asset.** After rendering, use the environment's file/image-reading capability to inspect the actual SVG or PNG. A successful renderer exit code is not sufficient.
 - **Iterate until the output passes.** Regenerate any diagram with clipped, overlapping, or ambiguous labels; lines crossing labels; unnecessary edge crossings; excessive empty space; inconsistent icon scale; or unreadable text at normal document width. Do not report diagrams as complete before this check passes.
 - **Use a consistent visual baseline.** Default to a white background and consistent typography, colors, line weight, padding, spacing, Iconify set, and icon treatment across the diagram set. In D2, centralize repeated styling and use a fixed layout/theme/render command for related diagrams.
 - **Keep labels short.** Use at most two concise lines per node. Put implementation detail in the document, not in icon captions. Prefer a node title over a title plus a long subtitle.
@@ -147,19 +157,19 @@ D2's PNG exporter uses Playwright and a headless browser; its first PNG export c
 d2 fmt docs/src/system_context.d2
 d2 validate docs/src/system_context.d2
 
-# Render a deterministic PNG from the repository root.
-d2 --layout=dagre --theme=0 --pad=48 --scale=2 \
-  docs/src/system_context.d2 docs/assets/system_context.png
+# Render a deterministic, self-contained SVG from the repository root.
+d2 --bundle=true --layout=dagre --theme=0 --pad=48 \
+  docs/src/system_context.d2 docs/assets/system_context.svg
 
 # Format, validate, and render every diagram.
 for f in docs/src/*.d2; do
   d2 fmt "$f" && d2 validate "$f" || exit 1
-  d2 --layout=dagre --theme=0 --pad=48 --scale=2 \
-    "$f" "docs/assets/$(basename "${f%.d2}").png" || exit 1
+  d2 --bundle=true --layout=dagre --theme=0 --pad=48 \
+    "$f" "docs/assets/$(basename "${f%.d2}").svg" || exit 1
 done
 ```
 
-Keep the layout, theme, padding, and scale consistent across a diagram set. Change them only after inspecting the result, and use the same updated command for every related diagram.
+Keep the layout, theme, and padding consistent across a diagram set. Change them only after inspecting the result, and use the same updated command for every related diagram.
 
 ### D2 quick reference
 
@@ -289,7 +299,7 @@ Pin the Excalidraw package, browser revision, OS/container, fonts, locale, viewp
    - Explain the short trade-off and record the choice. Do not silently infer it from personal preference.
 
 3. **Verify only the selected toolchain.**
-   - For D2, run `d2 version` and `d2 layout`. If D2 is missing, give the official instructions above, ask the user to install it, and wait for confirmation; do not install it yourself. Ask before a first-time Playwright/Chromium download, and do not claim PNG completion until PNG export works.
+   - For D2, run `d2 version` and `d2 layout`. If D2 is missing, give the official instructions above, ask the user to install it, and wait for confirmation; do not install it yourself. Render and validate bundled SVG output; D2 does not require a browser for this workflow.
    - For Excalidraw, identify the approved rendering method, verify its editor/browser/Node requirements, and ask before any global/system install or browser download.
 
 4. **Discovery (research-first).**
@@ -306,7 +316,7 @@ Pin the Excalidraw package, browser revision, OS/container, fonts, locale, viewp
    - Use the interactive question tool to confirm the direction and resolve key decisions **before** drafting the full document. This is the "during the final proposal" clarification point.
 
 7. **Draft the diagrams and document.**
-   - Draft the intended diagram set, component labels, data flows, and where icons would materially improve recognition, without writing files yet.
+   - Draft the intended diagram set without writing files yet. Start from a high-level conceptual/context view, a component view with icons and explicit data flow, and the control-flow view(s) that best explain runtime behavior; then add or omit use-case-specific views based on the design questions and chosen detail level.
    - For proposed icons, identify candidate Iconify IDs/set, source and license details, and a labeled-shape fallback before review.
    - Draft the document at the chosen detail level (see structure below), including the planned diagram references.
    - Keep diagrams consistent with each other and with the prose.
@@ -317,14 +327,14 @@ Pin the Excalidraw package, browser revision, OS/container, fonts, locale, viewp
 
 9. **Write, render, and inspect the document and diagrams.**
    - After approval, verify each approved Iconify ID, icon-set license/attribution, downloaded SVG safety, and local/self-contained integration.
-   - Write the selected editable source format (`.d2` or `.excalidraw`) in `docs/src/`, vendor approved Iconify SVGs in `docs/assets/icons/`, render PNGs to `docs/assets/`, and reference them from the document.
+   - Write the selected editable source format (`.d2` or `.excalidraw`) in `docs/src/`, vendor approved Iconify SVGs in `docs/assets/icons/`, render D2 assets as bundled SVGs or Excalidraw assets as PNGs in `docs/assets/`, and reference them from the document.
    - Add the `Diagram icon sources` provenance/license section when any icons are used.
-   - For D2, format and validate each source, then check the render exit status. For Excalidraw, validate that every source scene imports successfully before accepting its PNG.
-   - Inspect every rendered PNG with the environment's image-reading tool and apply the Diagram visual-quality standard. Iterate on the source and re-render until it passes.
+   - For D2, format and validate each source, render with `--bundle=true`, then check the SVG render exit status. For Excalidraw, validate that every source scene imports successfully before accepting its PNG.
+   - Inspect every rendered SVG or PNG with the environment's file/image-reading tool and apply the Diagram visual-quality standard. Iterate on the source and re-render until it passes.
    - Write the document to the agreed location and regenerate any diagrams touched by review changes.
 
 10. **On material change.**
-    - Whenever the architecture changes materially (new/deleted components, changed data flow, topology, or tech choices), update the affected editable diagram source, regenerate the PNGs, and keep the document in sync.
+    - Whenever the architecture changes materially (new/deleted components, changed data flow, topology, or tech choices), update the affected editable diagram source, regenerate the rendered assets, and keep the document in sync.
 
 ## Detail levels
 
@@ -334,7 +344,7 @@ Ask the user to choose one. Each level is progressively more detailed.
 
 - **Goal:** fast alignment on direction and scope; not yet implementable.
 - **Audience:** stakeholders, quick technical sanity check.
-- **Diagrams:** 1 — System Context (high level).
+- **Diagrams:** 1 — high-level conceptual/System Context view. If runtime behavior is the central design question, add one concise control-flow view rather than overloading the context diagram.
 - **Sections:**
   - Problem & Goals
   - Scope (in / out)
@@ -347,7 +357,7 @@ Ask the user to choose one. Each level is progressively more detailed.
 
 - **Goal:** enough detail to build a proof of concept or spike.
 - **Audience:** engineers building the POC.
-- **Diagrams:** 2–3 — System Context + Container/Component view + one Sequence or Data-flow.
+- **Diagrams:** 2–4 — high-level conceptual/System Context + component view with icons and explicit data flow + one appropriate control-flow view (sequence, activity, state, or request/event flow). Add one use-case-specific view when needed.
 - **Sections:** everything in Early Draft, plus:
   - Component breakdown with responsibilities
   - Technology choices and rationale (web-researched, cited)
@@ -360,7 +370,7 @@ Ask the user to choose one. Each level is progressively more detailed.
 
 - **Goal:** engineers can implement without re-discovering the design.
 - **Audience:** implementation team.
-- **Diagrams:** 4–6 — System Context + Container + Component + Deployment/Topology + Sequence(s) + Data Model (ER).
+- **Diagrams:** 4–7 — high-level conceptual/System Context + component view with icons and explicit data flow + control-flow view(s), plus the relevant deployment/topology, data model, security/trust-boundary, integration, resilience, or observability views required by the use case.
 - **Sections:** everything in POC Ready, plus:
   - Detailed component contracts and APIs
   - Data model / schema
@@ -391,7 +401,7 @@ A good architecture design produced by this skill should:
 - be grounded in researched evidence and observed system/repo facts, not guesses
 - choose the simplest standard approach that meets the requirements, with complexity justified by forcing functions
 - include accurate, readable, mutually consistent diagrams that match the prose
-- visually inspect every rendered PNG and meet the Diagram visual-quality standard before completion
+- visually inspect every rendered SVG or PNG and meet the Diagram visual-quality standard before completion
 - make assumptions, tradeoffs, and risks explicit
 - cite sources for version-, limit-, or price-dependent claims
 - match the chosen detail level without padding
@@ -406,8 +416,9 @@ A good architecture design produced by this skill should:
 - Prefer simple and standard; only choose complex when a concrete need forces it, and state that need.
 - Verify only the selected diagram toolchain before rendering. Never install missing D2 yourself; give the user instructions and wait for confirmation. Ask before any other global/system install or Chromium download.
 - Source every needed icon from Iconify, verify its icon-set license, vendor and inspect the SVG, record provenance, and fall back to a labeled shape rather than silently using another source.
-- Keep editable diagram sources in `docs/src/`, vendored icons in `docs/assets/icons/`, and PNGs in `docs/assets/`. For D2, run from the repo root and validate `.d2` sources; for Excalidraw, preserve importable, self-contained scenes and explicit export settings.
-- Visually inspect every rendered PNG and iterate on source/layout until labels, edges, spacing, and icons meet the Diagram visual-quality standard.
+- Keep editable diagram sources in `docs/src/`, vendored icons in `docs/assets/icons/`, and rendered assets in `docs/assets/`. For D2, render bundled SVGs from the repo root and validate `.d2` sources; for Excalidraw, preserve importable, self-contained scenes and explicit PNG export settings.
+- Build the diagram set around a high-level conceptual view, a component/data-flow view with useful icons, and appropriate control-flow views, then add only the use-case-specific diagrams that answer material questions.
+- Visually inspect every rendered SVG or PNG and iterate on source/layout until labels, edges, spacing, and icons meet the Diagram visual-quality standard.
 - Regenerate diagrams whenever the architecture changes materially, and keep the document in sync.
 - Do not write the document, diagram source files, or rendered assets until the user has reviewed the draft and approved it.
 - After saving, respond with a concise summary and the saved paths.
