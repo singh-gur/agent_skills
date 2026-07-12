@@ -124,25 +124,24 @@ Skill path in this repo:
 
 ### `spec-writer`
 
-Turns a raw request into an approved, evidence-backed `SPECS.md` before architecture, planning, or implementation.
+Turns a raw idea into a concise, approved `SPECS.md` handoff for architecture or implementation planning.
 
 Use it when you need help with:
 
 - refining an incomplete or ambiguous feature request
-- researching repository and external constraints with subagents
-- eliciting requirements through focused user Q&A
-- defining testable requirements, acceptance criteria, scope, and non-goals
-- producing a traceable specification for stakeholder approval
+- researching repository and external constraints only where they matter
+- fleshing out the idea through a refine → research → ask loop
+- clarifying essential requirements, scope, constraints, and success signals
+- producing a compact handoff for `arch-design`, `simple-plan`, or `super-plan`
 
 What it does:
 
-- refines the raw ask without silently inventing requirements
-- adapts output using domain profiles and Concept, Build Ready, or High Assurance detail levels
-- delegates structured parallel research and stakeholder-specific verification to read-only subagents
-- grades evidence, tracks source freshness, and asks targeted clarification questions after research
-- enforces measurable acceptance criteria and explicit approval quality gates
-- supports versioned amendments, deferred design decisions, and change history
-- writes `SPECS.md` only after approval, with stable IDs and a traceability matrix
+- inspects available context and refines the raw idea
+- researches only material unknowns before asking focused questions
+- repeats the loop only when answers expose important new uncertainty
+- keeps the final brief to roughly 50–150 lines by default
+- leaves architecture and implementation detail to the next skill
+- writes `SPECS.md` only after explicit confirmation
 
 Skill path in this repo:
 
@@ -230,10 +229,6 @@ Current skills in this repo:
 │   └── SKILL.md
 ├── spec-writer/
 │   ├── SKILL.md
-│   ├── references/
-│   │   ├── quality-rubric.md
-│   │   ├── research-evidence.md
-│   │   └── spec-profiles.md
 │   └── templates/
 │       └── SPECS.template.md
 └── super-plan/
