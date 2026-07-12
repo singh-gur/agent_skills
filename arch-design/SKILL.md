@@ -50,6 +50,8 @@ Do not use this skill for a standalone diagram with an already-decided design; u
 - **Research first.** For frameworks, services, patterns, limits, pricing, versions, and comparisons, use current web sources rather than model memory. Cite claims that depend on current facts.
 - **Simple and standard by default.** Prefer proven technology and the fewest moving parts that satisfy the requirements. Introduce complexity only when a concrete forcing function demands it.
 - **Delegate drawing.** Define what each diagram must communicate, then apply the complete `draw-diagram` workflow. Never maintain a second copy of drawing mechanics in this skill.
+- **Use a deterministic diagram set.** Select diagrams from the chosen detail level's required and conditional views. Do not vary the baseline set between runs without a stated reason.
+- **Keep diagrams visual.** Use short, intuitive component names and relationship labels. Put responsibilities, rationale, constraints, and other drill-down detail in the architecture Markdown rather than inside diagram nodes.
 - **Review before persistence.** Draft the design and semantic diagram briefs, walk the user through them, and write the document and diagram artifacts only after approval unless the user explicitly requests immediate generation.
 
 ## Design principles
@@ -90,6 +92,7 @@ Do not use this skill for a standalone diagram with an already-decided design; u
 4. **Choose the detail level.**
    - Ask the user to choose **Early Draft**, **POC Ready**, or **Implementation Ready**.
    - Explain the minimum useful level for their audience and purpose. If unanswered, default to **POC Ready**.
+   - Use the required diagram set for that level. Add a conditional view only when its inclusion trigger applies, and state that trigger in the proposal.
 
 5. **Develop candidate architecture.**
    - Start with the simplest viable structure.
@@ -102,12 +105,15 @@ Do not use this skill for a standalone diagram with an already-decided design; u
 
 7. **Prepare semantic diagram briefs.**
    - For each diagram required by the selected detail level, state the question it answers, audience, abstraction level, nodes, boundaries, relationships, important labels, and critical happy/failure paths.
+   - Classify each view as required or conditional and, for a conditional view, record why it applies.
+   - Specify concise display names separately from full component responsibilities. Diagram nodes should normally use a recognizable noun or short noun phrase; detailed explanations belong in the matching Markdown section.
+   - For the functional system components/infrastructure view, identify the recognizable icon category for each major building block. Do the same for a high-level system view when icons materially improve first-glance recognition. Keep text labels because icons supplement rather than replace names.
    - Keep each brief semantically consistent with the proposed architecture and prose.
-   - Pass these briefs to the loaded `draw-diagram` workflow; let that skill choose and explain drawing tools, notation, routing, icons, formats, and rendering details.
+   - Pass these briefs to the loaded `draw-diagram` workflow; let that skill choose and explain drawing tools, notation, routing, exact icons, formats, and rendering details.
 
 8. **Draft and review.**
    - Draft the architecture document and intended diagram briefs without writing files.
-   - Walk the user through the full Early Draft or a faithful section summary for larger levels, including proposed save paths.
+   - Walk the user through the full Early Draft design or a faithful section summary for larger levels, including proposed save paths.
    - Revise until explicitly approved.
 
 9. **Write the document and create diagrams.**
@@ -122,39 +128,45 @@ Do not use this skill for a standalone diagram with an already-decided design; u
 
 ## Detail levels
 
-Choose the lowest level that satisfies the user's purpose.
+Choose the lowest level that satisfies the user's purpose. The listed **required** diagrams are the stable baseline for every run at that level. Create a **conditional** diagram only when its trigger applies; do not add diagrams merely to make the document look comprehensive.
 
 ### Level 1 — Early Draft
 
-- **Goal:** fast alignment on direction and scope; not yet implementable.
-- **Audience:** stakeholders and early technical review.
-- **Typical diagram briefs:** one high-level conceptual/system-context view; optionally one concise runtime-flow view when behavior is the central question.
+- **Goal:** align on the system idea, scope, and conceptual operation; not yet implementable.
+- **Audience:** stakeholders and early technical reviewers.
+- **Required diagram — High-level system design:** show the system boundary, users or external actors, the few conceptual components needed to understand how the system works, and their primary interactions. Avoid product-level deployment detail.
+- **Conditional diagram — Simple functional system components/infrastructure view:** include when deployment shape, a major managed service, an external platform, or an infrastructure constraint affects feasibility. Show only the main compute, entry point, data store, messaging, and external-service building blocks that apply.
 - **Sections:**
   - Problem & Goals
   - Scope (in / out)
-  - High-level components
+  - High-level components and how they collaborate
   - Key assumptions
   - Options considered (brief)
   - Open questions
 
 ### Level 2 — POC Ready
 
-- **Goal:** enough detail to build a proof of concept or technical spike.
+- **Goal:** provide enough detail to build and evaluate a proof of concept or technical spike.
 - **Audience:** engineers building the POC.
-- **Typical diagram briefs:** conceptual/context, component and data flow, and one appropriate runtime/control-flow view; add one use-case-specific view when it answers a material question.
+- **Required diagram — Detailed high-level system design:** expand the Early Draft view with meaningful internal boundaries, conceptual component responsibilities, external integrations, and primary interaction directions while remaining technology-light.
+- **Required diagram — Functional system components/infrastructure view:** show a workable POC topology with the concrete runtime building blocks, services, gateways, compute, stores, queues or event brokers, and external dependencies that actually apply. Show boundaries and key connections, but leave configuration detail to Markdown.
+- **Conditional diagram — Simple data/event flow:** include when data transformation, asynchronous messaging, ordering, fan-out, or movement between stores is important to proving the design. Show the primary happy path only unless a failure path is central to the POC.
 - **Sections:** everything in Early Draft, plus:
   - Component responsibilities and boundaries
   - Technology choices and researched rationale
-  - Data flow
+  - Data or event flow
   - Key interface/contract sketches
   - High-level non-functional requirements
   - Risks and trade-offs
 
 ### Level 3 — Implementation Ready
 
-- **Goal:** engineers can implement without rediscovering major design decisions.
+- **Goal:** enable implementation and operation without rediscovering major design decisions.
 - **Audience:** implementation and operations teams.
-- **Typical diagram briefs:** conceptual/context, component and data flow, critical runtime/control flows, and the relevant deployment, data model, security, integration, resilience, or observability views.
+- **Required diagram — Detailed high-level system design:** provide the complete conceptual view with all implementation-significant domains, actors, external systems, ownership boundaries, and primary interactions.
+- **Required diagram — Detailed functional system components/infrastructure view:** provide a deployable topology with runtime units, managed services, network or trust boundaries, stores, messaging, external dependencies, scaling units, and availability placement where relevant.
+- **Required diagrams — Working flows:** show every critical request, data, event, or control flow needed to implement the system. Use separate views for materially different flows; include important alternate or failure behavior where it changes implementation.
+- **Conditional diagrams — Use-case-specific views:** add deployment, data model, security/trust boundary, integration, resilience, observability, migration, or state/lifecycle views only when they resolve an implementation-significant question not already clear from the required diagrams and Markdown.
 - **Sections:** everything in POC Ready, plus:
   - Detailed component contracts and APIs
   - Data model/schema
@@ -167,7 +179,20 @@ Choose the lowest level that satisfies the user's purpose.
   - ADRs for key decisions
   - Test strategy
 
-Do not gold-plate an Early Draft with implementation-ready detail unless requested.
+Do not gold-plate an Early Draft with POC- or implementation-ready detail unless requested.
+
+## Diagram content rules
+
+Apply these rules at every detail level:
+
+- A diagram is a visual index into the design, not a replacement for the design document.
+- Use intuitive, purpose-revealing names such as `API Gateway`, `Order Service`, `Event Bus`, or `Audit Store`; avoid sentences, implementation notes, and unexplained abbreviations in nodes.
+- Keep node text to a name and, only when essential, one short qualifier. Put responsibilities, technology rationale, protocols, schemas, configuration, scaling behavior, and caveats in Markdown.
+- Label only relationships whose meaning is not obvious. Prefer short verbs or compact data/event names over descriptive sentences.
+- Keep each diagram at one abstraction level and focused on one question. Split it when extra text is needed to explain mixed concerns.
+- In the Markdown, provide a matching component or flow section that lets readers drill down from each diagram name into responsibilities, interfaces, decisions, and operational detail.
+- Use recognizable icons for major building blocks in every functional system components/infrastructure diagram. Use icons in a high-level system diagram when they make actors, stores, messaging, compute, or external platforms easier to recognize at first glance. Follow `draw-diagram` for exact icon selection, provenance, rendering, and accessibility.
+- Never use an icon without a concise text label, and never use decorative icons that do not improve recognition.
 
 ## Architecture document requirements
 
@@ -201,7 +226,10 @@ A good architecture design should:
 - choose the simplest standard approach that meets explicit requirements
 - justify complexity with concrete forcing functions
 - make boundaries, ownership, contracts, data flow, assumptions, trade-offs, and risks explicit
+- use the selected level's stable required diagram set and justify every conditional view
+- use concise, recognizable diagram labels with Markdown as the drill-down layer
 - use diagrams whose semantics match the prose and whose visual quality passes `draw-diagram`
+- make functional system components/infrastructure views informative at first glance through purposeful icons and labels
 - cite current sources for factual claims that can change
 - match the selected detail level without padding
 - be actionable for its intended audience without pretending unresolved assumptions are decisions
@@ -213,7 +241,9 @@ A good architecture design should:
 - If the companion skill is unavailable, stop diagram work, provide the install command, and wait.
 - Design only unless the user explicitly changes the task.
 - Clarify during discovery and confirm direction before the final proposal.
-- Ask for the detail level before drafting.
+- Ask for the detail level before drafting and use its required diagram baseline consistently.
+- Keep explanatory detail in Markdown; keep diagrams concise, visual, and single-purpose.
+- Require purposeful icons plus labels in functional system components/infrastructure views, and use them in high-level views when they improve recognition.
 - Research current facts and cite authoritative sources.
 - Prefer simple, standard solutions; name every forcing function for complexity.
 - Review the architecture and semantic diagram briefs before writing files unless immediate generation is explicitly requested.
