@@ -147,6 +147,30 @@ Skill path in this repo:
 
 - `spec-writer/SKILL.md`
 
+### `skill-writer`
+
+Creates or revises portable Agent Skills through an approved, specification-driven workflow.
+
+Use it when you need help with:
+
+- turning a rough capability idea into a skill
+- researching domain and tooling requirements
+- refining triggers, scope, workflow, and outputs
+- updating an existing skill without changing unrelated behavior
+- validating a skill against the current Agent Skills specification
+
+What it does:
+
+- checks `https://agentskills.io/specification` during every run
+- repeats a focused refine → research → ask loop until material gaps are resolved
+- proposes the smallest useful skill package
+- shows the complete file tree and contents before writing
+- requires explicit approval, then writes and validates only the approved files
+
+Skill path in this repo:
+
+- `skill-writer/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `super-plan` skill from this repository:
@@ -188,6 +212,12 @@ Install the `spec-writer` skill from this repository:
 npx skills add singh-gur/agent_skills --skill spec-writer -g -y
 ```
 
+Install the `skill-writer` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill skill-writer -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -206,6 +236,7 @@ Current skills in this repo:
 - `arch-design`
 - `draw-diagram`
 - `spec-writer`
+- `skill-writer`
 
 ## Source layout
 
@@ -231,6 +262,8 @@ Current skills in this repo:
 │   ├── SKILL.md
 │   └── templates/
 │       └── SPECS.template.md
+├── skill-writer/
+│   └── SKILL.md
 └── super-plan/
     └── SKILL.md
 ```
