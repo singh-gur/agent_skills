@@ -19,3 +19,4 @@ Thumbs.db
 
 # Node dependencies
 node_modules/
+.pi-subagents/
