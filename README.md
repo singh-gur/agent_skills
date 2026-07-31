@@ -4,16 +4,15 @@ This repository contains installable agent skills that can be added with the `np
 
 ## Available skills
 
-### `super-plan`
+### `plan`
 
-Creates an implementation plan only and avoids making code changes while the skill is active.
+Creates an implementation plan only and avoids making code changes while the skill is active. Gauges task complexity to pick between a single-phase plan (simple work) and a phased plan (complex work), asking the user when the choice is unclear.
 
 Use it when you need help with:
 
-- complex features
-- refactors
-- migrations
-- architecture changes
+- small, low-risk changes that fit one focused pass
+- simple bug fixes or enhancements
+- complex features, refactors, migrations, or architecture changes
 - multi-step work that should be broken into clear phases
 
 What it does:
@@ -21,34 +20,13 @@ What it does:
 - explores the repository before planning
 - identifies constraints, risks, and open questions
 - asks focused clarifying questions when needed
-- writes a phased execution plan to `PLAN.md` or `plans/<task-name>.md`
+- selects single-phase or phased mode based on complexity, with a user check when ambiguous
+- writes the plan to `PLAN.md` or `plans/<task-name>.md`
 - produces plans that are suitable for handoff to another agent or developer
 
 Skill path in this repo:
 
-- `super-plan/SKILL.md`
-
-### `simple-plan`
-
-Creates a concise implementation plan only for simple tasks that should fit in one phase.
-
-Use it when you need help with:
-
-- small, low-risk changes
-- lightweight single-phase plans
-- simple bug fixes or enhancements
-- work that should be completed in one focused pass
-
-What it does:
-
-- explores only the directly relevant repository context
-- asks clarifying questions only when needed
-- writes a single-phase plan to `PLAN.md` or `plans/<task-name>.md`
-- warns when a task may be too large while keeping the output constrained to a safe single-phase plan
-
-Skill path in this repo:
-
-- `simple-plan/SKILL.md`
+- `plan/SKILL.md`
 
 ### `caveman`
 
@@ -132,7 +110,7 @@ Use it when you need help with:
 - researching repository and external constraints only where they matter
 - fleshing out the idea through a refine → research → ask loop
 - clarifying essential requirements, scope, constraints, and success signals
-- producing a compact handoff for `arch-design`, `simple-plan`, or `super-plan`
+- producing a compact handoff for `arch-design` or `plan`
 
 What it does:
 
@@ -173,16 +151,10 @@ Skill path in this repo:
 
 ## Install with `npx skills`
 
-Install the `super-plan` skill from this repository:
+Install the `plan` skill from this repository:
 
 ```bash
-npx skills add singh-gur/agent_skills --skill super-plan -g -y
-```
-
-Install the `simple-plan` skill from this repository:
-
-```bash
-npx skills add singh-gur/agent_skills --skill simple-plan -g -y
+npx skills add singh-gur/agent_skills --skill plan -g -y
 ```
 
 Install the `caveman` skill from this repository:
@@ -222,7 +194,7 @@ npx skills add singh-gur/agent_skills --skill skill-writer -g -y
 
 - `add` installs a skill from a repository
 - `singh-gur/agent_skills` is the short GitHub reference for this repository
-- `--skill <name>` selects the requested skill, such as `super-plan` or `spec-writer`
+- `--skill <name>` selects the requested skill, such as `plan` or `spec-writer`
 - `-g` installs it globally for your local setup
 - `-y` auto-confirms the install
 
@@ -230,8 +202,7 @@ npx skills add singh-gur/agent_skills --skill skill-writer -g -y
 
 Current skills in this repo:
 
-- `super-plan`
-- `simple-plan`
+- `plan`
 - `caveman`
 - `arch-design`
 - `draw-diagram`
@@ -256,14 +227,12 @@ Current skills in this repo:
 │           ├── package-lock.json
 │           ├── render.mjs
 │           └── renderer-browser.js
-├── simple-plan/
+├── plan/
 │   └── SKILL.md
 ├── spec-writer/
 │   ├── SKILL.md
 │   └── templates/
 │       └── SPECS.template.md
-├── skill-writer/
-│   └── SKILL.md
-└── super-plan/
+└── skill-writer/
     └── SKILL.md
 ```

@@ -51,4 +51,4 @@
 
 ## Recommended Next Step
 
-Use `<arch-design | simple-plan | super-plan>` to <next action>.
+Use `<arch-design | plan>` to <next action>.

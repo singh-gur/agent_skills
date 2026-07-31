@@ -1,6 +1,6 @@
 ---
 name: spec-writer
-description: Turns a raw idea into a concise, user-approved handoff brief for architecture or implementation planning. Uses a refine, research, and ask loop to clarify intent, scope, constraints, and requirements without producing an exhaustive specification. Use when an idea needs enough definition for arch-design, simple-plan, or super-plan.
+description: Turns a raw idea into a concise, user-approved handoff brief for architecture or implementation planning. Uses a refine, research, and ask loop to clarify intent, scope, constraints, and requirements without producing an exhaustive specification. Use when an idea needs enough definition for arch-design or plan.
 compatibility: Requires repository inspection when relevant, web research when external facts matter, and interactive user questions when available.
 metadata:
   author: gurbakhshish
@@ -13,7 +13,7 @@ Turn a rough idea into a short, clear `SPECS.md` that can be handed to an archit
 
 ## Intended handoff
 
-The output should give `arch-design`, `simple-plan`, or `super-plan` enough context to continue without repeating basic discovery. It is not a comprehensive product requirements document, test plan, architecture design, or implementation plan.
+The output should give `arch-design` or `plan` enough context to continue without repeating basic discovery. It is not a comprehensive product requirements document, test plan, architecture design, or implementation plan.
 
 ## Core behavior
 
