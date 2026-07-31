@@ -38,23 +38,34 @@ The skill produces one of two plan shapes:
 
 ## Mode selection
 
-Assess complexity from intake and research evidence.
+Select the plan shape based on execution structure, not file count alone.
+
+Default to **simple mode**. Choose **phased mode** only when research identifies at least two meaningful checkpoints.
+
+A meaningful checkpoint:
+
+- produces a concrete, independently verifiable outcome
+- creates a useful review, pause, handoff, or rollback boundary
+- is more than setup or an arbitrary subdivision of one cohesive change
 
 Choose **simple mode** when the work:
 
-- has a clear expected outcome and low risk
-- touches a small, well-understood set of files
-- fits one focused implementation pass without intermediate review checkpoints
+- has one cohesive outcome
+- can be implemented and verified as one unit
+- does not gain meaningful safety or reviewability from intermediate checkpoints
 
 Choose **phased mode** when the work:
 
-- spans multiple files, systems, or decision points
-- includes refactors, migrations, architecture updates, or risky edits
-- benefits from independently reviewable phases or handoff to another executor
+- contains multiple independently verifiable outcomes
+- has ordering, migration, rollout, or dependency boundaries
+- benefits materially from intermediate review, rollback, handoff, or parallel execution
+- carries risk that is meaningfully reduced by staged implementation
 
-If the signals conflict or the task sits near the boundary, ask the user which mode to use, with a concrete recommendation and the evidence behind it. Never silently pick a mode for an ambiguous task.
+Treat file count, estimated duration, and code volume as supporting evidence only. They do not determine the mode by themselves.
 
-Mode can be revised once if later research or a clarification answer changes the picture; tell the user when that happens. If the user explicitly chose a mode that looks wrong, warn them but honor their choice: for simple mode on a too-large task, constrain the plan to the safest useful single phase instead of switching.
+If phased mode cannot identify at least two meaningful checkpoints, use simple mode. If research cannot establish whether intermediate checkpoints add value, ask the user with a recommendation and the evidence behind it.
+
+Honor an explicit user choice after warning about concrete drawbacks. Revise the mode whenever later evidence or scope changes invalidate the current choice, and tell the user why.
 
 ## Intake → research → clarify loop
 
@@ -138,6 +149,8 @@ Exit the loop only when:
 
 - the outcome, scope, constraints, priorities, and success criteria are sufficiently defined
 - the mode has been selected and is supported by repository evidence (or confirmed by the user)
+- for simple mode, the work has been confirmed to form one cohesive, safely verifiable unit
+- for phased mode, at least two meaningful checkpoints have been identified with concrete outputs and verification
 - directly relevant repository facts, integration points, risks, and verification paths have been inspected
 - material unknowns are resolved, explicitly accepted as assumptions, or recorded with their planning impact
 - no recent clarification introduces an unresearched question
