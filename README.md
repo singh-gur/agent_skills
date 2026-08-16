@@ -149,6 +149,25 @@ Skill path in this repo:
 
 - `skill-writer/SKILL.md`
 
+### `dispatch`
+
+Complexity-tiered model routing for subagent delegation via `pi-subagents`. Classifies each delegated subtask into a tier (T1 trivial read-only, T2 normal, T3 hard/multi-file/safety-critical) and launches it on the model configured for that tier. Explicit invocation only.
+
+Use it when you need:
+
+- cheaper models on trivial subagent tasks and flagships only on hard ones
+- per-project or global tier-to-model configuration with an interactive model picker
+- caveman-style session toggle (`/skill:dispatch on|off|manual`)
+
+What it does:
+
+- routes subagent launches by task type + blast radius rubric
+- reads model lists from `~/.pi/agent/models-store.json` for an `ask_user` picker
+- stores settings in `~/.pi/agent/dispatch/settings.json` (global) or `<repo>/.pi/dispatch/settings.json` (project)
+- supports session-only overrides (`set T2 <model>`), one-shot tiers, and `status`/`reset`
+
+Requires the `pi-subagents` package. Skill path in this repo: `dispatch/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -188,6 +207,12 @@ Install the `skill-writer` skill from this repository:
 
 ```bash
 npx skills add singh-gur/agent_skills --skill skill-writer -g -y
+```
+
+Install the `dispatch` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill dispatch -g -y
 ```
 
 ### Command breakdown
