@@ -55,15 +55,15 @@ Built-in defaults (used only when nothing else is set):
 ```json
 {
   "tiers": {
-    "T1": { "model": "zai/glm-5-turbo", "thinking": "low",  "tools": "read, grep, find, ls" },
-    "T2": { "model": "default",         "thinking": "medium" },
-    "T3": { "model": "openai-codex/gpt-5.4", "thinking": "high" }
+    "T1": { "model": "opencode-go/deepseek-v4-flash", "thinking": "high",  "tools": "read, grep, find, ls" },
+    "T2": { "model": "inherit", "thinking": "high" },
+    "T3": { "model": "openai-codex/gpt-5.6-sol", "thinking": "high" }
   }
 }
 ```
 
-`model: "default"` means use the session's default model. Settings files use the same
-shape as above. Hand-editing them is fine; `reset` only deletes the project file.
+`model: "inherit"` means use the parent session's active model. Settings files use the
+same shape as above. Hand-editing them is fine; `reset` only deletes the project file.
 
 ## Settings flow (for `settings` command)
 
@@ -73,7 +73,7 @@ shape as above. Hand-editing them is fine; `reset` only deletes the project file
    skip the picker and ask for model ids as free text instead.
 3. Open ONE `ask_user` form with:
    - One choice question per tier (T1, T2, T3): model options from the list, current
-     effective value marked as recommendation, plus a "default" option for T2.
+     effective value marked as recommendation, plus an "inherit" option for T2.
    - One choice question for scope: `global` or `project`.
 4. Merge answers into the chosen file: update only the tiers the user changed, preserve
    other fields. Create parent directories as needed. Never write credentials or
@@ -104,7 +104,7 @@ When mode is on (auto) or manual:
    other existing agent, pass per-launch `model:` and optionally `thinking:` overrides
    from the tier config instead.
 3. In manual mode, state proposed tier + model and wait for confirmation before launch.
-4. State the choice in one line per launch, e.g. `T1 -> dispatch-scout (zai/glm-5-turbo): find auth middleware files`.
+4. State the choice in one line per launch, e.g. `T1 -> dispatch-scout (opencode-go/deepseek-v4-flash): find auth middleware files`.
 5. A one-shot tier (set via `T<n> <task>`) wins over the rubric for the next launch only.
 
 Skill text and workflowScript conventions come from the `pi-subagents` skill; this skill
