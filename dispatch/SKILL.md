@@ -15,7 +15,7 @@ metadata:
 # Dispatch
 
 Complexity-tiered model routing for subagent launches. Parent stays orchestrator; this
-skill only changes WHICH model/agent each child launch uses.
+skill only changes which model each child launch uses.
 
 ## Persistence
 
@@ -32,7 +32,7 @@ Parse the user's argument after `/skill:dispatch`:
 
 | Command | Action |
 |---|---|
-| `on` | Enable auto-routing. Bootstrap tier agents if missing (see below). Confirm in one line. |
+| `on` | Enable auto-routing. Confirm in one line. |
 | `off` (or "stop dispatching") | Disable routing; dispatch subagents normally. Confirm in one line. |
 | `manual` | Routing on, but before each launch propose tier + model and wait for user confirmation. |
 | `status` | Show: mode, effective config per tier (model, thinking, source of value: session override / project / global / default), any pending one-shot. |
@@ -55,7 +55,7 @@ Built-in defaults (used only when nothing else is set):
 ```json
 {
   "tiers": {
-    "T1": { "model": "opencode-go/deepseek-v4-flash", "thinking": "high",  "tools": "read, grep, find, ls" },
+    "T1": { "model": "opencode-go/deepseek-v4-flash", "thinking": "high" },
     "T2": { "model": "inherit", "thinking": "high" },
     "T3": { "model": "openai-codex/gpt-5.6-sol", "thinking": "high" }
   }
@@ -91,6 +91,12 @@ Classify each delegated subtask BEFORE launch:
 - **T3** — Multi-file refactors, architecture/design work, security, migrations,
   performance work, safety-critical paths, or any task where requirements are ambiguous.
 
+Determine the tier from the delegated task's complexity, scope, ambiguity, risk, required
+judgment, and authority. Determine the agent separately from the task's purpose, such as
+research, reconnaissance, implementation, review, or advisory work. The tier selects the
+model capability; the agent selects the role. Do not infer a tier solely from an agent's
+name, because the same agent may handle tasks at different tiers.
+
 When torn between two tiers, route UP. When the parent itself will synthesize/apply
 child output, children doing collection/analysis can drop one tier below what they'd
 need as a sole writer.
@@ -99,29 +105,21 @@ need as a sole writer.
 
 When mode is on (auto) or manual:
 
-1. Resolve each tier's config (resolution order above).
-2. Prefer the tier agent for the classified tier (see Bootstrap). For a launch into any
-   other existing agent, pass per-launch `model:` and optionally `thinking:` overrides
-   from the tier config instead.
-3. In manual mode, state proposed tier + model and wait for confirmation before launch.
-4. State the choice in one line per launch, e.g. `T1 -> dispatch-scout (opencode-go/deepseek-v4-flash): find auth middleware files`.
-5. A one-shot tier (set via `T<n> <task>`) wins over the rubric for the next launch only.
+1. Classify the delegated task using the routing rubric.
+2. Resolve the tier config using the resolution order above.
+3. Inspect the currently available agents with `subagent({ action: "list" })` when the
+   list is not already current.
+4. Choose only an existing executable, non-disabled agent whose declared purpose,
+   capabilities, tools, context behavior, and authority fit the task. Never assume fixed
+   agent names, and never create or update an agent. If no suitable agent exists, do not
+   create one; keep the work in the parent or report that delegation is unavailable.
+5. Pass the tier's `model` and `thinking` as per-launch overrides. Preserve the selected
+   agent's existing prompt, tools, and safety constraints.
+6. In manual mode, state the proposed tier, agent, and model, then wait for confirmation.
+7. State the choice in one line per launch, e.g.
+   `T1 -> <existing-agent> (opencode-go/deepseek-v4-flash): find auth middleware files`.
+8. A one-shot tier (set via `T<n> <task>`) wins over the rubric for the next launch only.
 
 Skill text and workflowScript conventions come from the `pi-subagents` skill; this skill
-changes only model/agent selection, not orchestration structure, safety constraints, or
-the one-writer-per-worktree rule.
-
-## Bootstrap (first `on`)
-
-1. `subagent({ action: "list" })`. If agents `dispatch-scout`, `dispatch-worker`,
-   `dispatch-architect` already exist, skip creation.
-2. Otherwise create them via `subagent({ action: "create", config: {...} })` using the
-   resolved tier config:
-   - `dispatch-scout` (T1): tools from tier config (default read-only), short system
-     prompt: fast, precise, read-only investigator; report findings, make no edits.
-   - `dispatch-worker` (T2): standard implementation tools, prompt: focused implementer;
-     smallest correct diff; follow repo conventions.
-   - `dispatch-architect` (T3): thinking high, full tools, prompt: senior problem-solver
-     for complex/ambiguous/safety-critical work; analyze fully before editing.
-3. If tier models later change via settings/set, existing agent files keep their old
-   model — per-launch `model:` override applies the new value, so no re-bootstrap needed.
+changes only model selection, not orchestration structure, role selection rules, safety
+constraints, or the one-writer-per-worktree rule.
