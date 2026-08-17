@@ -146,7 +146,7 @@ async function main() {
 
   const signal = AbortSignal.timeout(15_000);
   const runtime = await ModelRuntime.create({ signal });
-  const models = await runtime.getAvailable(undefined, { signal });
+  const models = runtime.getModels();
   const ranked = rankModelMatches(models, values.query, fuzzyFilter, limit);
 
   console.log(JSON.stringify({

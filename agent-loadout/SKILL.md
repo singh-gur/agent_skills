@@ -37,7 +37,7 @@ Parse the argument after `/skill:agent-loadout`:
 
 | Command | Action |
 |---|---|
-| `set [user\|project]` | Ask for tier models, resolve them against available Pi models, ask for supported thinking levels, then set agent overrides. |
+| `set [user\|project]` | Ask for tier models, resolve them against Pi's known model catalog, ask for supported thinking levels, then set agent overrides. |
 | `unset [user\|project]` | Remove model and thinking overrides for the mapped agents. |
 | `status [user\|project\|all]` | Show only the mapped agents' configured overrides. |
 | no argument | Same as `status all`. |
@@ -63,7 +63,7 @@ Only use project scope for a project the user trusts.
 
 Resolve both scripts relative to this `SKILL.md`:
 
-- `scripts/model-options.mjs` searches Pi's currently available models and reports model-specific thinking levels.
+- `scripts/model-options.mjs` searches Pi's composed model catalog and reports model-specific thinking levels.
 - `scripts/agent-overrides.mjs` reads or changes the selected settings file.
 
 The model helper uses Pi's own `ModelRuntime`, fuzzy matcher, `getSupportedThinkingLevels()`, and `clampThinkingLevel()`. It does not display credentials.
@@ -110,7 +110,7 @@ Run independent tier searches in parallel when possible.
 10. Warn when existing model or thinking fields will be replaced.
 11. Require explicit confirmation.
 12. Re-run the model helper once per selected canonical model. Stop without writing if:
-    - the canonical model is no longer an exact available match; or
+    - the canonical model is no longer an exact known match; or
     - the chosen thinking level is no longer listed in `thinkingLevels`.
 13. Run:
 
@@ -177,6 +177,6 @@ node <skill-root>/scripts/agent-overrides.mjs status \
 - Never use `subagent({ action: "update" })` for bundled agents; it requires an editable user/project agent file and is not an `agentOverrides` writer.
 - Never change `subagents.defaultModel`, `subagents.defaultThinking`, agent tools, prompts, skills, disabled state, or unrelated settings.
 - Never display unrelated settings or credentials.
-- Stop without writing when model discovery fails, no requested model is available, a thinking level is unsupported, the settings file is malformed, or expected settings objects have incompatible types.
+- Stop without writing when model discovery fails, no requested model is known, a thinking level is unsupported, the settings file is malformed, or expected settings objects have incompatible types.
 - Do not claim a configured override is live until Pi has reloaded.
 - If a custom agent shadows a builtin and pins its own model or thinking in frontmatter, explain that the frontmatter can take precedence.
