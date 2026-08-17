@@ -258,7 +258,7 @@ if (isMain) {
   try {
     main();
   } catch (error) {
-    console.error(`dispatch: ${error.message}`);
+    console.error(`agent-loadout: ${error.message}`);
     process.exitCode = 1;
   }
 }

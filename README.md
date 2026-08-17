@@ -149,7 +149,7 @@ Skill path in this repo:
 
 - `skill-writer/SKILL.md`
 
-### `dispatch`
+### `agent-loadout`
 
 Configures persistent per-agent model and thinking overrides for the builtin `pi-subagents` roles.
 
@@ -169,13 +169,13 @@ Tier mapping:
 
 Commands:
 
-- `/skill:dispatch set [user|project]`
-- `/skill:dispatch unset [user|project]`
-- `/skill:dispatch status [user|project|all]`
+- `/skill:agent-loadout set [user|project]`
+- `/skill:agent-loadout unset [user|project]`
+- `/skill:agent-loadout status [user|project|all]`
 
 The skill asks for a model and thinking level for each tier, shows the exact settings change, and requires confirmation before writing. It preserves unrelated Pi settings and does not perform per-launch routing.
 
-Requires Pi, Node.js, and the `pi-subagents` package. Skill path in this repo: `dispatch/SKILL.md`
+Requires Pi, Node.js, and the `pi-subagents` package. Skill path in this repo: `agent-loadout/SKILL.md`
 
 ## Install with `npx skills`
 
@@ -218,10 +218,10 @@ Install the `skill-writer` skill from this repository:
 npx skills add singh-gur/agent_skills --skill skill-writer -g -y
 ```
 
-Install the `dispatch` skill from this repository:
+Install the `agent-loadout` skill from this repository:
 
 ```bash
-npx skills add singh-gur/agent_skills --skill dispatch -g -y
+npx skills add singh-gur/agent_skills --skill agent-loadout -g -y
 ```
 
 ### Command breakdown
@@ -242,22 +242,22 @@ Current skills in this repo:
 - `draw-diagram`
 - `spec-writer`
 - `skill-writer`
-- `dispatch`
+- `agent-loadout`
 
 ## Source layout
 
 ```text
 .
 ├── README.md
-├── arch-design/
-│   └── SKILL.md
-├── caveman/
-│   └── SKILL.md
-├── dispatch/
+├── agent-loadout/
 │   ├── SKILL.md
 │   └── scripts/
 │       ├── agent-overrides.mjs
 │       └── agent-overrides.test.mjs
+├── arch-design/
+│   └── SKILL.md
+├── caveman/
+│   └── SKILL.md
 ├── draw-diagram/
 │   ├── SKILL.md
 │   └── scripts/

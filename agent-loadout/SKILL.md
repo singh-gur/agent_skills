@@ -1,6 +1,6 @@
 ---
-name: dispatch
-description: Configures persistent pi-subagents model and thinking overrides using three capability tiers. Use when the user explicitly invokes dispatch set, unset, or status to configure the builtin scout, researcher, worker, reviewer, delegate, and oracle agents at user or project scope.
+name: agent-loadout
+description: Configures persistent pi-subagents model and thinking overrides using three capability tiers. Use when the user explicitly invokes agent-loadout set, unset, or status to configure the builtin scout, researcher, worker, reviewer, delegate, and oracle agents at user or project scope.
 compatibility: Requires Pi, pi-subagents, Node.js, and permission to update Pi user or project settings.
 metadata:
   author: gurbakhshish
@@ -8,7 +8,7 @@ metadata:
   spec: https://agentskills.io/specification
 ---
 
-# Dispatch
+# Agent Loadout
 
 Configure persistent `pi-subagents` model and thinking overrides by assigning its builtin agents to three capability tiers.
 
@@ -30,7 +30,7 @@ Overrides follow normal `pi-subagents` precedence. An agent definition that expl
 
 ## Commands
 
-Parse the argument after `/skill:dispatch`:
+Parse the argument after `/skill:agent-loadout`:
 
 | Command | Action |
 |---|---|
