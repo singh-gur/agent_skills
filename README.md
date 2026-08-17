@@ -151,22 +151,31 @@ Skill path in this repo:
 
 ### `dispatch`
 
-Complexity-tiered model routing for subagent delegation via `pi-subagents`. Classifies each delegated subtask into a tier (T1 trivial read-only, T2 normal, T3 hard/multi-file/safety-critical) and launches it on the model configured for that tier. Explicit invocation only.
+Configures persistent per-agent model and thinking overrides for the builtin `pi-subagents` roles.
 
 Use it when you need:
 
-- cheaper models on trivial subagent tasks and flagships only on hard ones
-- per-project or global tier-to-model configuration with an interactive model picker
-- caveman-style session toggle (`/skill:dispatch on|off|manual`)
+- fast models for reconnaissance and research agents
+- standard models for implementation and review agents
+- a deep model for oracle-style advisory work
+- user-wide or project-specific `subagents.agentOverrides`
+- a safe way to apply or remove only model and thinking fields
 
-What it does:
+Tier mapping:
 
-- routes subagent launches by task type + blast radius rubric
-- reads model lists from `~/.pi/agent/models-store.json` for an `ask_user` picker
-- stores settings in `~/.pi/agent/dispatch/settings.json` (global) or `<repo>/.pi/dispatch/settings.json` (project)
-- supports session-only overrides (`set T2 <model>`), one-shot tiers, and `status`/`reset`
+- T1: `scout`, `researcher`
+- T2: `worker`, `reviewer`, `delegate`
+- T3: `oracle` (`advisor` is an alias)
 
-Requires the `pi-subagents` package. Skill path in this repo: `dispatch/SKILL.md`
+Commands:
+
+- `/skill:dispatch set [user|project]`
+- `/skill:dispatch unset [user|project]`
+- `/skill:dispatch status [user|project|all]`
+
+The skill asks for a model and thinking level for each tier, shows the exact settings change, and requires confirmation before writing. It preserves unrelated Pi settings and does not perform per-launch routing.
+
+Requires Pi, Node.js, and the `pi-subagents` package. Skill path in this repo: `dispatch/SKILL.md`
 
 ## Install with `npx skills`
 
@@ -233,6 +242,7 @@ Current skills in this repo:
 - `draw-diagram`
 - `spec-writer`
 - `skill-writer`
+- `dispatch`
 
 ## Source layout
 
@@ -243,6 +253,11 @@ Current skills in this repo:
 │   └── SKILL.md
 ├── caveman/
 │   └── SKILL.md
+├── dispatch/
+│   ├── SKILL.md
+│   └── scripts/
+│       ├── agent-overrides.mjs
+│       └── agent-overrides.test.mjs
 ├── draw-diagram/
 │   ├── SKILL.md
 │   └── scripts/

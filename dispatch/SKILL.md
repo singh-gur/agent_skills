@@ -1,11 +1,7 @@
 ---
 name: dispatch
-description: >
-  Complexity-based subagent dispatching. Classifies each delegated subtask into a tier
-  (T1 trivial read-only, T2 normal, T3 hard/multi-file/safety-critical) and routes it to
-  the model configured for that tier via pi-subagents. Toggle with "dispatch on" /
-  "dispatch off"; configure with "dispatch settings". Explicit invocation only.
-disable-model-invocation: true
+description: Configures persistent pi-subagents model and thinking overrides using three capability tiers. Use when the user explicitly invokes dispatch set, unset, or status to configure the builtin scout, researcher, worker, reviewer, delegate, and oracle agents at user or project scope.
+compatibility: Requires Pi, pi-subagents, Node.js, and permission to update Pi user or project settings.
 metadata:
   author: gurbakhshish
   source: custom
@@ -14,112 +10,154 @@ metadata:
 
 # Dispatch
 
-Complexity-tiered model routing for subagent launches. Parent stays orchestrator; this
-skill only changes which model each child launch uses.
+Configure persistent `pi-subagents` model and thinking overrides by assigning its builtin agents to three capability tiers.
 
-## Persistence
+This skill changes Pi settings. It does not classify individual tasks, alter subagent launches, or provide runtime ON/OFF routing.
 
-Session state: `mode` (off|on|manual), `sessionOverrides` (tier -> model), and
-`oneShotTier` (if set). OFF by default each session. Active only when the user enables
-it or has enabled it earlier this session. If this skill is loaded and no mode was set
-yet, mode is OFF until "dispatch on".
+## Agent tiers
 
-Keep state current across the whole session. Do not revert mode after many turns.
+Use this fixed mapping:
+
+| Tier | Intended use | Agents | Recommended thinking |
+|---|---|---|---|
+| T1 | Fast reconnaissance and research | `scout`, `researcher` | `low` |
+| T2 | Standard implementation and review | `worker`, `reviewer`, `delegate` | `medium` |
+| T3 | Difficult advisory reasoning | `oracle` | `high` |
+
+`advisor` is an alias for `oracle`; do not create a separate override for it.
+
+Overrides follow normal `pi-subagents` precedence. An agent definition that explicitly declares `model` or `thinking` can take precedence over `agentOverrides`.
 
 ## Commands
 
-Parse the user's argument after `/skill:dispatch`:
+Parse the argument after `/skill:dispatch`:
 
 | Command | Action |
 |---|---|
-| `on` | Enable auto-routing. Confirm in one line. |
-| `off` (or "stop dispatching") | Disable routing; dispatch subagents normally. Confirm in one line. |
-| `manual` | Routing on, but before each launch propose tier + model and wait for user confirmation. |
-| `status` | Show: mode, effective config per tier (model, thinking, source of value: session override / project / global / default), any pending one-shot. |
-| `settings [global\|project]` | Interactive configuration. See Settings flow. |
-| `set T1\|T2\|T3 <model-id>` | Session-only model override for a tier. |
-| `unset T1\|T2\|T3` | Clear session override for a tier. |
-| `reset` | Delete the project settings file (fall back to global). Confirm first; never touch global without an explicit `reset global`. |
-| `T1\|T2\|T3 <task...>` | Set one-shot tier for the next delegation, then delegate/queue the task. Clears after one use. |
-| no argument | Same as `status`. |
+| `set [user\|project]` | Ask for tier models and thinking levels, then set agent overrides. |
+| `unset [user\|project]` | Remove model and thinking overrides for the mapped agents. |
+| `status [user\|project\|all]` | Show only the mapped agents' configured overrides. |
+| no argument | Same as `status all`. |
 
-## Settings files
+Do not support the previous `on`, `off`, `manual`, one-shot tier, or per-launch routing commands.
 
-- Global: `~/.pi/agent/dispatch/settings.json`
-- Project: `<repo-root>/.pi/dispatch/settings.json` (repo root = git top-level of cwd)
+## Settings paths
 
-Resolution per tier field: **session override > project file > global file > built-in default.**
+Resolve the target settings file before changing anything:
 
-Built-in defaults (used only when nothing else is set):
+- User scope: `$PI_CODING_AGENT_DIR/settings.json` when `PI_CODING_AGENT_DIR` is set; otherwise `~/.pi/agent/settings.json`.
+- Project scope: the current Pi project root's `.pi/settings.json`.
 
-```json
-{
-  "tiers": {
-    "T1": { "model": "opencode-go/deepseek-v4-flash", "thinking": "high" },
-    "T2": { "model": "inherit", "thinking": "high" },
-    "T3": { "model": "openai-codex/gpt-5.6-sol", "thinking": "high" }
-  }
-}
+For project scope:
+
+1. Find the nearest ancestor containing `.pi` or `.agents`.
+2. Honor an existing `subagents.projectRootResolution` value of `nearest` or `git-root`.
+3. If no configured project root exists, propose `<git-root>/.pi/settings.json`, or `<cwd>/.pi/settings.json` outside Git, and require confirmation before creating it.
+
+Only use project scope for a project the user trusts.
+
+## Helper script
+
+Resolve `scripts/agent-overrides.mjs` relative to this `SKILL.md`.
+
+The helper accepts an explicit settings path and modifies only:
+
+```text
+subagents.agentOverrides.<mapped-agent>.model
+subagents.agentOverrides.<mapped-agent>.thinking
 ```
 
-`model: "inherit"` means use the parent session's active model. Settings files use the
-same shape as above. Hand-editing them is fine; `reset` only deletes the project file.
+It never prints unrelated settings.
 
-## Settings flow (for `settings` command)
+## Set workflow
 
-1. Read both settings files (if present) to show current effective values.
-2. Read `~/.pi/agent/models-store.json` and build the model list: one entry per model as
-   `provider/model-id` with its display name. If the file is missing or unparseable,
-   skip the picker and ask for model ids as free text instead.
-3. Open ONE `ask_user` form with:
-   - One choice question per tier (T1, T2, T3): model options from the list, current
-     effective value marked as recommendation, plus an "inherit" option for T2.
-   - One choice question for scope: `global` or `project`.
-4. Merge answers into the chosen file: update only the tiers the user changed, preserve
-   other fields. Create parent directories as needed. Never write credentials or
-   anything beyond this schema.
-5. Confirm in one line and show the new effective table.
+For `set`:
 
-## Routing rubric (task type + blast radius)
+1. Resolve the requested scope. If omitted, ask whether to use `user` or `project`.
+2. Run the helper's `status` command for that settings file.
+3. Open one `ask_user` form containing:
+   - one text question for each tier's model;
+   - one thinking-level choice for each tier;
+   - recommendations of `low` for T1, `medium` for T2, and `high` for T3.
+4. Recommend a currently consistent tier value when every mapped agent in that tier has the same override.
+5. Ask for bare provider/model identifiers without an appended thinking suffix.
+6. Show the exact settings path and resulting mapping.
+7. Warn when existing model or thinking fields will be replaced.
+8. Require explicit confirmation.
+9. Run:
 
-Classify each delegated subtask BEFORE launch:
+```bash
+node <skill-root>/scripts/agent-overrides.mjs set \
+  --file <settings-path> \
+  --t1-model <model> --t1-thinking <level> \
+  --t2-model <model> --t2-thinking <level> \
+  --t3-model <model> --t3-thinking <level>
+```
 
-- **T1** — Read-only: lookups, greps, single-file reads, fanout research collection,
-  summarization of known sources.
-- **T2** — Focused single-file or small-scope edits, straightforward bug fixes,
-  test writing, standard reviews.
-- **T3** — Multi-file refactors, architecture/design work, security, migrations,
-  performance work, safety-critical paths, or any task where requirements are ambiguous.
+10. Show the helper's summary and tell the user to reload or restart Pi before relying on the new mapping.
 
-Determine the tier from the delegated task's complexity, scope, ambiguity, risk, required
-judgment, and authority. Determine the agent separately from the task's purpose, such as
-research, reconnaissance, implementation, review, or advisory work. The tier selects the
-model capability; the agent selects the role. Do not infer a tier solely from an agent's
-name, because the same agent may handle tasks at different tiers.
+Allowed thinking choices:
 
-When torn between two tiers, route UP. When the parent itself will synthesize/apply
-child output, children doing collection/analysis can drop one tier below what they'd
-need as a sole writer.
+- `off`
+- `minimal`
+- `low`
+- `medium`
+- `high`
+- `xhigh`
+- `max`
 
-## Dispatching
+The helper stores `off` as JSON `false`, matching the `pi-subagents` opt-out format.
 
-When mode is on (auto) or manual:
+## Unset workflow
 
-1. Classify the delegated task using the routing rubric.
-2. Resolve the tier config using the resolution order above.
-3. Inspect the currently available agents with `subagent({ action: "list" })` when the
-   list is not already current.
-4. Choose only an existing executable, non-disabled agent whose declared purpose,
-   capabilities, tools, context behavior, and authority fit the task. Never assume fixed
-   agent names, and never create or update an agent. If no suitable agent exists, do not
-   create one; keep the work in the parent or report that delegation is unavailable.
-5. Pass the tier's `model` and `thinking` as per-launch overrides. Preserve the selected
-   agent's existing prompt, tools, and safety constraints.
-6. In manual mode, state the proposed tier, agent, and model, then wait for confirmation.
-7. State the choice in one line per launch, e.g.
-   `T1 -> <existing-agent> (opencode-go/deepseek-v4-flash): find auth middleware files`.
-8. A one-shot tier (set via `T<n> <task>`) wins over the rubric for the next launch only.
+For `unset`:
 
-Skill text and workflowScript conventions come from the `pi-subagents` skill; this skill
-changes only model selection, not orchestration structure, role selection rules, safety
-constraints, or the one-writer-per-worktree rule.
+1. Resolve the requested scope. If omitted, ask whether to use `user` or `project`.
+2. Run the helper's `status` command.
+3. Explain that unset removes only `model` and `thinking` from:
+   - `scout`
+   - `researcher`
+   - `worker`
+   - `reviewer`
+   - `delegate`
+   - `oracle`
+4. Warn that this also removes matching overrides that may predate this skill.
+5. Require explicit confirmation.
+6. Run:
+
+```bash
+node <skill-root>/scripts/agent-overrides.mjs unset \
+  --file <settings-path>
+```
+
+7. Show the helper's summary and tell the user to reload or restart Pi.
+
+Preserve every other override field. Remove a mapped agent's override object only when it becomes empty.
+
+## Status workflow
+
+For `status`:
+
+- `status user`: inspect only user settings.
+- `status project`: inspect only project settings.
+- `status all` or no argument: inspect both.
+- Do not print unrelated settings values.
+- Clearly distinguish missing files, unset fields, and conflicting values within a tier.
+- Remind the user that the live runtime mapping may remain stale until Pi reloads.
+
+Run once per selected settings file:
+
+```bash
+node <skill-root>/scripts/agent-overrides.mjs status \
+  --file <settings-path>
+```
+
+## Safety rules
+
+- Never modify agent definition files.
+- Never use `subagent({ action: "update" })` for bundled agents; it requires an editable user/project agent file and is not an `agentOverrides` writer.
+- Never change `subagents.defaultModel`, `subagents.defaultThinking`, agent tools, prompts, skills, disabled state, or unrelated settings.
+- Never display unrelated settings or credentials.
+- Stop without writing when the settings file is malformed or the expected objects have incompatible types.
+- Do not claim a configured override is live until Pi has reloaded.
+- If a custom agent shadows a builtin and pins its own model or thinking in frontmatter, explain that the frontmatter can take precedence.
