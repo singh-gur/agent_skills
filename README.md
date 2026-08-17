@@ -177,6 +177,27 @@ The skill asks for a model and thinking level for each tier, shows the exact set
 
 Requires Pi, Node.js, and the `pi-subagents` package. Skill path in this repo: `agent-loadout/SKILL.md`
 
+### `superwork`
+
+Executes complex multi-stage work through a per-phase research → build → verify
+loop, with fresh-context review gates between phases.
+
+Use it when you need help with:
+
+- executing a phased implementation plan (`PLAN.md`, `plans/*.md`)
+- large features, refactors, or migrations too big for one pass
+- research-then-build tasks where each step needs verification
+
+What it does:
+
+- accepts an existing plan or frames one through compressed intake
+- runs each phase as research → build → verify with recorded state
+- gates every phase on passing verification plus fresh review
+- fans out to subagents (scout, researcher, worker, reviewer) when available
+- resumes interrupted runs from the phase state ledger
+
+Skill path in this repo: `superwork/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -224,6 +245,12 @@ Install the `agent-loadout` skill from this repository:
 npx skills add singh-gur/agent_skills --skill agent-loadout -g -y
 ```
 
+Install the `superwork` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill superwork -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -243,6 +270,7 @@ Current skills in this repo:
 - `spec-writer`
 - `skill-writer`
 - `agent-loadout`
+- `superwork`
 
 ## Source layout
 
@@ -273,6 +301,11 @@ Current skills in this repo:
 │   ├── SKILL.md
 │   └── templates/
 │       └── SPECS.template.md
-└── skill-writer/
-    └── SKILL.md
+├── skill-writer/
+│   └── SKILL.md
+└── superwork/
+    ├── SKILL.md
+    └── references/
+        ├── loop.md
+        └── subagents.md
 ```
