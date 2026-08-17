@@ -14,8 +14,9 @@ import { fileURLToPath } from "node:url";
 
 export const TIER_AGENTS = {
   T1: ["scout", "researcher"],
-  T2: ["worker", "reviewer", "delegate"],
-  T3: ["oracle"],
+  T2: ["reviewer", "delegate"],
+  T3: ["worker"],
+  T4: ["oracle"],
 };
 
 const THINKING_LEVELS = new Set([
@@ -216,6 +217,7 @@ function policiesFrom(values) {
     T1: { model: values["t1-model"], thinking: values["t1-thinking"] },
     T2: { model: values["t2-model"], thinking: values["t2-thinking"] },
     T3: { model: values["t3-model"], thinking: values["t3-thinking"] },
+    T4: { model: values["t4-model"], thinking: values["t4-thinking"] },
   };
 }
 

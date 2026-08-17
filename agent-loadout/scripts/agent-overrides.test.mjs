@@ -9,8 +9,9 @@ import {
 
 const policies = {
   T1: { model: "provider/fast", thinking: "low" },
-  T2: { model: "provider/standard", thinking: "medium" },
-  T3: { model: "provider/deep", thinking: "high" },
+  T2: { model: "provider/review", thinking: "medium" },
+  T3: { model: "provider/worker", thinking: "high" },
+  T4: { model: "provider/deep", thinking: "xhigh" },
 };
 
 test("set applies tier policies and preserves unrelated settings", () => {
@@ -38,12 +39,14 @@ test("set applies tier policies and preserves unrelated settings", () => {
   }
 
   for (const agent of TIER_AGENTS.T2) {
-    assert.equal(result.subagents.agentOverrides[agent].model, "provider/standard");
+    assert.equal(result.subagents.agentOverrides[agent].model, "provider/review");
     assert.equal(result.subagents.agentOverrides[agent].thinking, "medium");
   }
 
+  assert.equal(result.subagents.agentOverrides.worker.model, "provider/worker");
+  assert.equal(result.subagents.agentOverrides.worker.thinking, "high");
   assert.equal(result.subagents.agentOverrides.oracle.model, "provider/deep");
-  assert.equal(result.subagents.agentOverrides.oracle.thinking, "high");
+  assert.equal(result.subagents.agentOverrides.oracle.thinking, "xhigh");
   assert.equal(result.subagents.agentOverrides.reviewer.tools, "read,grep");
   assert.equal(result.subagents.agentOverrides.custom.model, "provider/custom");
   assert.deepEqual(result.packages, original.packages);
@@ -69,7 +72,7 @@ test("unset removes only mapped model and thinking fields", () => {
           thinking: "low",
         },
         reviewer: {
-          model: "provider/standard",
+          model: "provider/review",
           thinking: "medium",
           tools: "read,grep",
         },
