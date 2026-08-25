@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { withExcalidrawPage } from "./lib/browser.mjs";
+import { prepareOutput, writeFileNoFollow } from "./lib/safe-write.mjs";
 
 const MAX_SCENE_BYTES = 25 * 1024 * 1024;
 const MAX_ELEMENTS = 10_000;
@@ -12,6 +13,7 @@ Options:
   --scale <number>       Export scale from 0.25 to 4 (default: 2)
   --padding <pixels>     Export padding from 0 to 256 (default: 32)
   --background <color>  Background color (default: #ffffff)
+  --force                Allow an output path outside the current directory
   --help                 Show this help`;
 }
 
@@ -25,7 +27,7 @@ function parseNumber(name, value, min, max) {
 
 function parseArgs(argv) {
   const positional = [];
-  const options = { scale: 2, padding: 32, background: "#ffffff" };
+  const options = { scale: 2, padding: 32, background: "#ffffff", force: false };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -37,6 +39,8 @@ function parseArgs(argv) {
     } else if (arg === "--background") {
       options.background = argv[++index];
       if (!options.background) throw new Error("background requires a color");
+    } else if (arg === "--force") {
+      options.force = true;
     } else if (arg.startsWith("--")) {
       throw new Error(`Unknown option: ${arg}`);
     } else {
@@ -52,6 +56,7 @@ function parseArgs(argv) {
   const output = path.resolve(
     positional[1] ?? positional[0].replace(/\.excalidraw$/i, "") + ".png",
   );
+  if (input === output) throw new Error("Refusing to overwrite the input scene with its render");
   return { input, output, options, help: false };
 }
 
@@ -73,6 +78,7 @@ async function loadScene(input) {
 
 async function render({ input, output, options }) {
   const scene = await loadScene(input);
+  const target = await prepareOutput(output, { force: options.force });
   const png = await withExcalidrawPage(async (page) => {
     const base64 = await page.evaluate(
       ({ sceneData, renderOptions }) => window.dd.renderPng(sceneData, renderOptions),
@@ -81,9 +87,8 @@ async function render({ input, output, options }) {
     return Buffer.from(base64, "base64");
   });
 
-  await fs.mkdir(path.dirname(output), { recursive: true });
-  await fs.writeFile(output, png);
-  process.stdout.write(`${output}\n`);
+  await writeFileNoFollow(target, png);
+  process.stdout.write(`${target}\n`);
 }
 
 try {

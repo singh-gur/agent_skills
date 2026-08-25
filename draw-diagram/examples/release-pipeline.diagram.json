@@ -1,0 +1,170 @@
+{
+  "title": "Release Pipeline — commit to production",
+  "subtitle": "Supply-chain controls between a merged pull request and a running workload",
+  "style": "clean",
+  "iconsDir": "icons",
+  "nodes": [
+    {
+      "id": "dev",
+      "col": 0,
+      "row": 0,
+      "kind": "actor",
+      "label": "Developers",
+      "sublabel": "feature branches",
+      "icon": "mdi--account-group-outline.svg"
+    },
+    {
+      "id": "sec",
+      "col": 0,
+      "row": 2,
+      "kind": "actor",
+      "label": "Security Team",
+      "sublabel": "owns the scan policy",
+      "icon": "mdi--shield-account-outline.svg"
+    },
+    {
+      "id": "forge",
+      "col": 1,
+      "row": 1,
+      "kind": "service",
+      "label": "Git Forge",
+      "sublabel": "protected main branch",
+      "icon": "simple-icons--github.svg"
+    },
+    {
+      "id": "build",
+      "col": 2,
+      "row": 0,
+      "kind": "worker",
+      "label": "Build Image",
+      "sublabel": "pinned base, reproducible",
+      "icon": "mdi--package-variant-closed.svg"
+    },
+    {
+      "id": "test",
+      "col": 2,
+      "row": 1,
+      "kind": "worker",
+      "label": "Test Suite",
+      "sublabel": "unit, integration, e2e",
+      "icon": "mdi--test-tube.svg"
+    },
+    {
+      "id": "scan",
+      "col": 2,
+      "row": 2,
+      "kind": "worker",
+      "label": "Scan",
+      "sublabel": "SAST, SCA, secrets",
+      "icon": "mdi--magnify-scan.svg"
+    },
+    {
+      "id": "sign",
+      "col": 3,
+      "row": 0,
+      "kind": "service",
+      "label": "Sign Artifact",
+      "sublabel": "Sigstore, keyless",
+      "icon": "mdi--file-sign.svg"
+    },
+    {
+      "id": "attest",
+      "col": 3,
+      "row": 1,
+      "kind": "service",
+      "label": "Provenance",
+      "sublabel": "SLSA build attestation",
+      "icon": "mdi--clipboard-check-outline.svg"
+    },
+    {
+      "id": "sbom",
+      "col": 3,
+      "row": 2,
+      "kind": "service",
+      "label": "SBOM",
+      "sublabel": "CycloneDX export",
+      "icon": "mdi--format-list-bulleted-square.svg"
+    },
+    {
+      "id": "registry",
+      "col": 4,
+      "row": 0,
+      "rowSpan": 3,
+      "kind": "store",
+      "label": "Artifact Registry",
+      "sublabel": "OCI, immutable digests",
+      "icon": "mdi--archive-outline.svg"
+    },
+    {
+      "id": "admission",
+      "col": 5,
+      "row": 1,
+      "kind": "edge",
+      "label": "Admission Control",
+      "sublabel": "verifies signature and policy",
+      "icon": "mdi--shield-check.svg"
+    },
+    {
+      "id": "staging",
+      "col": 6,
+      "row": 0,
+      "kind": "service",
+      "label": "Staging Cluster",
+      "sublabel": "auto-promote on green",
+      "icon": "mdi--rocket-launch-outline.svg"
+    },
+    {
+      "id": "prod",
+      "col": 6,
+      "row": 2,
+      "kind": "service",
+      "label": "Production Cluster",
+      "sublabel": "manual approval gate",
+      "icon": "mdi--server.svg"
+    }
+  ],
+  "groups": [
+    {
+      "id": "buildenv",
+      "title": "Trusted build environment — ephemeral runners",
+      "kind": "boundary",
+      "cols": [2, 3],
+      "rows": [0, 2]
+    },
+    {
+      "id": "runtime",
+      "title": "Runtime",
+      "kind": "zone",
+      "cols": [5, 6],
+      "rows": [0, 2]
+    }
+  ],
+  "edges": [
+    { "from": "dev", "to": "forge", "label": "push / pull request" },
+    { "from": "forge", "to": "build", "label": "merge to main" },
+    { "from": "build", "to": "test", "label": "image digest" },
+    { "from": "build", "to": "scan", "label": "image + lockfiles" },
+    { "from": "sec", "to": "scan", "label": "policy baseline", "kind": "control" },
+    { "from": "build", "to": "sign", "label": "unsigned image" },
+    { "from": "test", "to": "attest", "label": "test evidence", "kind": "data" },
+    { "from": "scan", "to": "sbom", "label": "component inventory", "kind": "data" },
+    { "from": "sign", "to": "registry", "label": "push signed image", "kind": "secure" },
+    { "from": "attest", "to": "registry", "label": "attach attestation", "kind": "data" },
+    { "from": "sbom", "to": "registry", "label": "attach SBOM", "kind": "data" },
+    { "from": "registry", "to": "admission", "label": "pull by digest" },
+    { "from": "admission", "to": "staging", "label": "admit" },
+    { "from": "admission", "to": "prod", "label": "admit after approval", "kind": "secure" },
+    { "from": "staging", "to": "prod", "label": "promote on green", "kind": "control" }
+  ],
+  "legend": [
+    { "kind": "actor", "label": "Person or team" },
+    { "kind": "service", "label": "Pipeline service" },
+    { "kind": "worker", "label": "CI stage" },
+    { "kind": "store", "label": "Registry" },
+    { "kind": "edge", "label": "Policy gate" },
+    { "edgeKind": "data", "label": "Metadata" },
+    { "edgeKind": "control", "label": "Policy / status" },
+    { "edgeKind": "secure", "label": "Signature enforced" }
+  ],
+  "note": "Signing runs only when the test and scan stages both pass. Nothing reaches a cluster except by digest, and admission control rejects any image whose signature or SBOM is missing."
+}

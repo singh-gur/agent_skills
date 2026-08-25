@@ -1,8 +1,8 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { withExcalidrawPage } from "./lib/browser.mjs";
 import { computeLayout } from "./lib/layout.mjs";
 import { routeEdges } from "./lib/route.mjs";
+import { prepareOutput, writeFileNoFollow } from "./lib/safe-write.mjs";
 import { buildScene } from "./lib/scene.mjs";
 import { loadIcons, loadSpec } from "./lib/spec.mjs";
 import { resolveTheme } from "./lib/theme.mjs";
@@ -17,6 +17,7 @@ Options:
   --scale <number>     Export scale from 0.25 to 4 (default: 2)
   --padding <pixels>   Export padding from 0 to 256 (default: 32)
   --background <color> Background color (default: #ffffff)
+  --force              Allow output paths outside the current directory
   --help               Show this help`;
 }
 
@@ -29,7 +30,7 @@ function parseNumber(name, value, min, max) {
 }
 
 function parseArgs(argv) {
-  const options = { scale: 2, padding: 32, background: "#ffffff", png: true };
+  const options = { scale: 2, padding: 32, background: "#ffffff", png: true, force: false };
   let spec = null;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -40,6 +41,7 @@ function parseArgs(argv) {
     else if (arg === "--scale") options.scale = parseNumber("scale", argv[++index], 0.25, 4);
     else if (arg === "--padding") options.padding = parseNumber("padding", argv[++index], 0, 256);
     else if (arg === "--background") options.background = argv[++index];
+    else if (arg === "--force") options.force = true;
     else if (arg.startsWith("--")) throw new Error(`Unknown option: ${arg}`);
     else if (spec) throw new Error("Expected a single spec file");
     else spec = arg;
@@ -47,13 +49,13 @@ function parseArgs(argv) {
   if (!spec) throw new Error("Expected a diagram spec file");
 
   const base = spec.replace(/\.(spec\.)?json$/i, "");
-  return {
-    specPath: path.resolve(spec),
-    scenePath: path.resolve(options.scenePath ?? `${base}.excalidraw`),
-    pngPath: options.png ? path.resolve(options.pngPath ?? `${base}.png`) : null,
-    options,
-    help: false,
-  };
+  const specPath = path.resolve(spec);
+  const scenePath = path.resolve(options.scenePath ?? `${base}.excalidraw`);
+  const pngPath = options.png ? path.resolve(options.pngPath ?? `${base}.png`) : null;
+  if (scenePath === specPath || pngPath === specPath) {
+    throw new Error("Refusing to overwrite the spec with its own output");
+  }
+  return { specPath, scenePath, pngPath, options, help: false };
 }
 
 async function main(args) {
@@ -64,6 +66,11 @@ async function main(args) {
     colors: { canvas: args.options.background, ...(spec.colors ?? {}) },
   });
   const icons = await loadIcons(spec);
+
+  // Settle the destinations before starting a browser, so a rejected output
+  // path costs a moment rather than a full render.
+  const scenePath = await prepareOutput(args.scenePath, { force: args.options.force });
+  const pngPath = args.pngPath ? await prepareOutput(args.pngPath, { force: args.options.force }) : null;
 
   const result = await withExcalidrawPage(async (page) => {
     await page.evaluate(
@@ -130,13 +137,11 @@ async function main(args) {
     return { scene, png, warnings, report };
   });
 
-  await fs.mkdir(path.dirname(args.scenePath), { recursive: true });
-  await fs.writeFile(args.scenePath, `${JSON.stringify(result.scene, null, 2)}\n`);
-  process.stdout.write(`${args.scenePath}\n`);
+  await writeFileNoFollow(scenePath, `${JSON.stringify(result.scene, null, 2)}\n`);
+  process.stdout.write(`${scenePath}\n`);
   if (result.png) {
-    await fs.mkdir(path.dirname(args.pngPath), { recursive: true });
-    await fs.writeFile(args.pngPath, result.png);
-    process.stdout.write(`${args.pngPath}\n`);
+    await writeFileNoFollow(pngPath, result.png);
+    process.stdout.write(`${pngPath}\n`);
   }
   for (const warning of result.warnings) {
     process.stderr.write(`warning: ${warning}\n`);

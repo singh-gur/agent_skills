@@ -104,7 +104,7 @@ Reject and regenerate output with clipped or overlapping labels, ambiguous arrow
 
 Excalidraw scenes are **generated from a diagram spec**, never hand-written. The bundled builder measures every label with real Excalidraw font metrics, places nodes on a grid, routes orthogonal connectors around components, puts connector labels in clear space, checks the scene against Excalidraw's own loader, and renders the PNG.
 
-Read `references/diagram-spec.md` for the full spec reference, and start from `examples/system-architecture.diagram.json` rather than a blank file.
+Read `references/diagram-spec.md` for the full spec reference, and start from the example whose shape is closest — `examples/system-architecture.diagram.json` (layered architecture), `examples/release-pipeline.diagram.json` (left-to-right process with a trust boundary), or `examples/multi-region-topology.diagram.json` (mirrored regions with cross-boundary replication) — rather than a blank file.
 
 ### Authoring conventions
 
@@ -132,7 +132,7 @@ If dependencies are absent, run:
 npm --prefix <skill-dir>/scripts/excalidraw ci --ignore-scripts
 ```
 
-The lockfile pins Excalidraw, React, Vite, and Playwright. The builder self-hosts fonts and assets, permits only its loopback origin, and blocks external requests.
+The lockfile pins Excalidraw, React, Vite, and Playwright. The builder self-hosts fonts and assets, permits only its loopback origin, and blocks external requests, service workers, and off-host WebSockets. Chromium runs sandboxed; a host that cannot provide the sandbox prints a warning rather than failing.
 
 Attempt a build before installing a browser. If Chromium is missing, ask before this large download:
 
@@ -161,6 +161,8 @@ The builder validates the spec, fails loudly on duplicate ids, occupied cells, u
 Treat every warning as a defect. Fix it in the spec and rebuild; do not ship a warned build. Then inspect the PNG and iterate on anything the checks cannot see, such as ordering, emphasis, or a grouping that reads wrong.
 
 `--no-png` writes only the scene. `--background` also sets the colour that connector labels mask with, so keep it consistent between builds.
+
+Outputs must stay under the directory the command runs from, and the builder refuses to write through a symbolic link. Both apply to `render.mjs` and `icons.mjs` too. When a destination elsewhere is genuinely wanted, confirm the real path with the user and pass `--force`.
 
 To re-render a scene that was edited in the Excalidraw editor, use the renderer directly:
 
@@ -223,7 +225,11 @@ mkdir -p docs/src docs/assets/icons
 # Use the engine explicitly selected by the user from `d2 layout`.
 layout_engine="<chosen-layout>"
 
-for f in docs/src/*.d2; do
+# Name the diagrams being worked on. `d2 fmt` rewrites in place, so never let
+# this list expand to files this task did not author.
+sources=(docs/src/<name>.d2)
+
+for f in "${sources[@]}"; do
   d2 fmt "$f" && d2 validate "$f" || exit 1
   d2 --bundle=true --layout="$layout_engine" --theme=0 --pad=48 \
     "$f" "docs/assets/$(basename "${f%.d2}").svg" || exit 1

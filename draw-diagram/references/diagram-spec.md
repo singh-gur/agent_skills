@@ -53,7 +53,7 @@ flags: `--no-png`, `--background <color>`, `--padding 0..256`, `--scale 0.25..4`
 | `label` | Wrapped automatically to the node width; keep it to one short phrase. |
 | `sublabel` | Smaller muted second line: technology, runtime, or ownership. |
 | `kind` | `actor`, `client`, `edge`, `service`, `worker`, `queue`, `store`, `external`, `platform`, `accent`. Defaults to `service`. |
-| `icon` | Filename inside `iconsDir`, or a path relative to the spec. |
+| `icon` | Filename inside `iconsDir`, or a path relative to the spec. Must be an `.svg` file that resolves inside one of those two directories; absolute paths and paths that escape them are rejected. |
 | `width`, `height` | Escape hatch; the grid sizes nodes without them. |
 | `fill`, `stroke`, `textColor` | Per-node overrides when a role is not enough. |
 
@@ -102,6 +102,17 @@ of a component.
 Widen `colGap` when many labelled connectors share a vertical lane; raise
 `nodeWidth` when labels wrap awkwardly.
 
+## Limits
+
+The builder rejects a spec above any of these before it lays anything out: 2 MiB
+of JSON, 500 nodes, 1000 edges, 50 groups, 50 legend items, `col`/`row` above
+200, `colSpan`/`rowSpan` above 50, 10,000 grid cells, 200-character labels,
+300-character titles, and 256 KiB per icon. `layout` and `font` values must be
+finite numbers in range. A very dense grid is also refused at routing time.
+
+These sit far above a diagram anyone can read, so hitting one means the spec is
+wrong, or the drawing wants splitting into several.
+
 ## Reproducibility
 
 Element ids, seeds, and nonces are derived from the spec, not from the clock or
@@ -136,6 +147,14 @@ so a diagram keeps one voice.
 
 ## Example
 
-`examples/system-architecture.diagram.json` is a complete, rendered reference:
-six tiers, two boundaries, twenty labelled connectors, icons, legend, and note.
-Start from it rather than from a blank spec.
+Three complete, rendered specs to start from rather than a blank file:
+
+| Spec | Shows |
+| --- | --- |
+| `examples/system-architecture.diagram.json` | Six tiers, two boundaries, twenty labelled connectors, icons, legend, and note. |
+| `examples/release-pipeline.diagram.json` | A left-to-right process with a trust boundary, a `rowSpan` store spanning a whole tier, and `control`/`secure`/`data` edge kinds. |
+| `examples/multi-region-topology.diagram.json` | Two mirrored region boundaries with an empty corridor row between them, `bidirectional` replication edges pinned with `fromSide`/`toSide`, and a `layout.colGap` override. |
+
+The corridor trick in the last one is worth copying: leaving a row free between
+two boundaries gives the long cross-boundary connectors a lane of their own,
+instead of forcing them through occupied cells.

@@ -25,24 +25,44 @@ export async function withExcalidrawPage(run) {
     }
     const origin = `http://127.0.0.1:${address.port}`;
 
+    // Playwright leaves Chromium's sandbox off by default. Ask for it, and fall
+    // back only where the host cannot provide it (containers without user
+    // namespaces), so a missing sandbox is visible rather than silent.
     try {
-      browser = await chromium.launch({ headless: true });
-    } catch (error) {
-      throw new Error(
-        `Chromium is unavailable. From the renderer directory, after approval, run: npm exec -- playwright install chromium\n${error.message}`,
-      );
+      browser = await chromium.launch({ headless: true, chromiumSandbox: true });
+    } catch (sandboxError) {
+      try {
+        browser = await chromium.launch({ headless: true });
+        process.stderr.write(
+          `warning: Chromium sandbox unavailable, continuing without it (${sandboxError.message.split("\n")[0]})\n`,
+        );
+      } catch (error) {
+        throw new Error(
+          `Chromium is unavailable. From the renderer directory, after approval, run: npm exec -- playwright install chromium\n${error.message}`,
+        );
+      }
     }
 
     const pageErrors = [];
-    const page = await browser.newPage({ colorScheme: "light" });
-    page.on("pageerror", (error) => pageErrors.push(error.message));
-    page.on("console", (message) => {
-      if (message.type() === "error") pageErrors.push(message.text());
-    });
-    await page.route("**/*", async (route) => {
+    // Route at the context so popups and workers are covered too; `page.route()`
+    // reaches neither, nor does it see WebSocket or service worker traffic.
+    const context = await browser.newContext({ colorScheme: "light", serviceWorkers: "block" });
+    await context.route("**/*", async (route) => {
       const url = new URL(route.request().url());
       if (url.origin === origin) await route.continue();
       else await route.abort("blockedbyclient");
+    });
+    // Same rule as the HTTP route, applied to sockets `context.route()` never
+    // sees. Vite's own client socket is loopback, so it keeps working.
+    await context.routeWebSocket(
+      (url) => url.hostname !== "127.0.0.1",
+      (ws) => ws.close(),
+    );
+
+    const page = await context.newPage();
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") pageErrors.push(message.text());
     });
 
     await page.goto(origin, { waitUntil: "networkidle", timeout: 60_000 });

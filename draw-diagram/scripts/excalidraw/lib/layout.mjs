@@ -40,8 +40,8 @@ export async function computeLayout(spec, theme, measure) {
   const nodes = spec.nodes.map((node) => ({ ...node }));
   const groups = (spec.groups ?? []).map((group) => ({ ...group }));
 
-  const colCount = Math.max(...nodes.map((n) => n.col + (n.colSpan ?? 1)));
-  const rowCount = Math.max(...nodes.map((n) => n.row + (n.rowSpan ?? 1)));
+  const colCount = nodes.reduce((max, n) => Math.max(max, n.col + (n.colSpan ?? 1)), 0);
+  const rowCount = nodes.reduce((max, n) => Math.max(max, n.row + (n.rowSpan ?? 1)), 0);
 
   // 1. Column widths come from declared node widths (spans borrow their tracks).
   const colWidths = Array.from({ length: colCount }, () => L.nodeWidth);

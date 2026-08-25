@@ -1,0 +1,224 @@
+{
+  "title": "Multi-Region Topology — active/active",
+  "subtitle": "Where a request lands, what serves it locally, and how state stays consistent between regions",
+  "style": "clean",
+  "iconsDir": "icons",
+  "layout": {
+    "colGap": 132
+  },
+  "nodes": [
+    {
+      "id": "users",
+      "col": 0,
+      "row": 3,
+      "kind": "actor",
+      "label": "Users",
+      "sublabel": "global, both regions live",
+      "icon": "mdi--account-multiple-outline.svg"
+    },
+    {
+      "id": "dns",
+      "col": 1,
+      "row": 3,
+      "kind": "edge",
+      "label": "Anycast DNS",
+      "sublabel": "latency and health routing",
+      "icon": "mdi--dns-outline.svg"
+    },
+    {
+      "id": "alb_a",
+      "col": 2,
+      "row": 1,
+      "kind": "edge",
+      "label": "Load Balancer",
+      "sublabel": "3 availability zones",
+      "icon": "mdi--lan-connect.svg"
+    },
+    {
+      "id": "api_a",
+      "col": 3,
+      "row": 0,
+      "kind": "service",
+      "label": "API Tier",
+      "sublabel": "autoscaled, stateless",
+      "icon": "mdi--application-brackets-outline.svg"
+    },
+    {
+      "id": "worker_a",
+      "col": 3,
+      "row": 1,
+      "kind": "worker",
+      "label": "Async Workers",
+      "sublabel": "event consumers",
+      "icon": "mdi--cog-sync-outline.svg"
+    },
+    {
+      "id": "pg_a",
+      "col": 4,
+      "row": 0,
+      "kind": "store",
+      "label": "Distributed SQL",
+      "sublabel": "eu-west-1 replicas",
+      "icon": "mdi--database-sync-outline.svg"
+    },
+    {
+      "id": "cache_a",
+      "col": 4,
+      "row": 1,
+      "kind": "store",
+      "label": "Cache",
+      "sublabel": "regional, not replicated",
+      "icon": "simple-icons--redis.svg"
+    },
+    {
+      "id": "bus_a",
+      "col": 4,
+      "row": 2,
+      "kind": "queue",
+      "label": "Event Bus",
+      "sublabel": "regional topics",
+      "icon": "mdi--transit-connection-variant.svg"
+    },
+    {
+      "id": "alb_b",
+      "col": 2,
+      "row": 5,
+      "kind": "edge",
+      "label": "Load Balancer",
+      "sublabel": "3 availability zones",
+      "icon": "mdi--lan-connect.svg"
+    },
+    {
+      "id": "api_b",
+      "col": 3,
+      "row": 4,
+      "kind": "service",
+      "label": "API Tier",
+      "sublabel": "autoscaled, stateless",
+      "icon": "mdi--application-brackets-outline.svg"
+    },
+    {
+      "id": "worker_b",
+      "col": 3,
+      "row": 5,
+      "kind": "worker",
+      "label": "Async Workers",
+      "sublabel": "event consumers",
+      "icon": "mdi--cog-sync-outline.svg"
+    },
+    {
+      "id": "pg_b",
+      "col": 4,
+      "row": 4,
+      "kind": "store",
+      "label": "Distributed SQL",
+      "sublabel": "us-east-1 replicas",
+      "icon": "mdi--database-sync-outline.svg"
+    },
+    {
+      "id": "cache_b",
+      "col": 4,
+      "row": 5,
+      "kind": "store",
+      "label": "Cache",
+      "sublabel": "regional, not replicated",
+      "icon": "simple-icons--redis.svg"
+    },
+    {
+      "id": "bus_b",
+      "col": 4,
+      "row": 6,
+      "kind": "queue",
+      "label": "Event Bus",
+      "sublabel": "regional topics",
+      "icon": "mdi--transit-connection-variant.svg"
+    },
+    {
+      "id": "health",
+      "col": 3,
+      "row": 3,
+      "kind": "platform",
+      "label": "Health Checker",
+      "sublabel": "global, drives failover",
+      "icon": "mdi--heart-pulse.svg"
+    },
+    {
+      "id": "objstore",
+      "col": 5,
+      "row": 3,
+      "kind": "store",
+      "label": "Object Store",
+      "sublabel": "cross-region replication",
+      "icon": "mdi--bucket-outline.svg"
+    }
+  ],
+  "groups": [
+    {
+      "id": "rega",
+      "title": "Region A — eu-west-1 (serving)",
+      "kind": "boundary",
+      "cols": [2, 4],
+      "rows": [0, 2]
+    },
+    {
+      "id": "regb",
+      "title": "Region B — us-east-1 (serving)",
+      "kind": "boundary",
+      "cols": [2, 4],
+      "rows": [4, 6]
+    }
+  ],
+  "edges": [
+    { "from": "users", "to": "dns", "label": "HTTPS" },
+    { "from": "dns", "to": "alb_a", "label": "nearest healthy" },
+    { "from": "dns", "to": "alb_b", "label": "nearest healthy" },
+    { "from": "alb_a", "to": "api_a", "label": "HTTP/2" },
+    { "from": "alb_b", "to": "api_b", "label": "HTTP/2" },
+    { "from": "api_a", "to": "pg_a", "label": "read + write", "kind": "data" },
+    { "from": "api_a", "to": "cache_a", "label": "hot reads", "kind": "data" },
+    { "from": "api_a", "to": "bus_a", "label": "publish", "kind": "async" },
+    { "from": "bus_a", "to": "worker_a", "label": "consume", "kind": "async" },
+    { "from": "worker_a", "to": "pg_a", "label": "write results", "kind": "data" },
+    { "from": "api_b", "to": "pg_b", "label": "read + write", "kind": "data" },
+    { "from": "api_b", "to": "cache_b", "label": "hot reads", "kind": "data" },
+    { "from": "api_b", "to": "bus_b", "label": "publish", "kind": "async" },
+    { "from": "bus_b", "to": "worker_b", "label": "consume", "kind": "async" },
+    { "from": "worker_b", "to": "pg_b", "label": "write results", "kind": "data" },
+    {
+      "from": "pg_a",
+      "to": "pg_b",
+      "label": "Raft consensus",
+      "kind": "data",
+      "bidirectional": true,
+      "fromSide": "right",
+      "toSide": "right"
+    },
+    {
+      "from": "bus_a",
+      "to": "bus_b",
+      "label": "mirrored topics",
+      "kind": "async",
+      "bidirectional": true,
+      "fromSide": "left",
+      "toSide": "left"
+    },
+    { "from": "pg_a", "to": "objstore", "label": "backups + WAL", "kind": "data" },
+    { "from": "pg_b", "to": "objstore", "label": "backups + WAL", "kind": "data" },
+    { "from": "health", "to": "alb_a", "label": "probe", "kind": "control" },
+    { "from": "health", "to": "alb_b", "label": "probe", "kind": "control" },
+    { "from": "health", "to": "dns", "label": "withdraw on failure", "kind": "control" }
+  ],
+  "legend": [
+    { "kind": "actor", "label": "User" },
+    { "kind": "edge", "label": "Edge / routing" },
+    { "kind": "service", "label": "API tier" },
+    { "kind": "worker", "label": "Async worker" },
+    { "kind": "store", "label": "Data store" },
+    { "kind": "queue", "label": "Event bus" },
+    { "kind": "platform", "label": "Global control" },
+    { "edgeKind": "data", "label": "Data / replication" },
+    { "edgeKind": "async", "label": "Asynchronous" },
+    { "edgeKind": "control", "label": "Health / control" }
+  ],
+  "note": "Both regions serve writes. Caches are deliberately regional, so a failover warms cold. Losing a region costs the in-flight requests it was serving; DNS withdraws it on health check failure and the surviving region absorbs the load."
+}

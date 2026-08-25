@@ -412,7 +412,22 @@ function adjustTerminalOverlaps(edges, nodesById) {
   return moved.size > 0;
 }
 
+/**
+ * Every edge is scored against one candidate path per lane pair, and terminal
+ * overlap resolution then compares edges pairwise. Both grow fast enough that a
+ * dense grid should be split into readable diagrams rather than routed.
+ */
+const MAX_ROUTE_CANDIDATES = 200_000;
+
 export function routeEdges({ nodes, edges, channels, obstacles, groups, laneStep = 16 }) {
+  const lanePairs = (channels?.xs?.length ?? 0) * (channels?.ys?.length ?? 0);
+  if (edges.length * lanePairs > MAX_ROUTE_CANDIDATES) {
+    throw new Error(
+      `Diagram is too dense to route: ${edges.length} connectors across ${lanePairs} lane pairs. ` +
+        "Split it into several diagrams, drop connectors, or place nodes on a smaller grid.",
+    );
+  }
+
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   const prepared = edges.map((edge, index) => ({ ...edge, key: `e${index}` }));
 

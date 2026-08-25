@@ -1,5 +1,9 @@
-import fs from "node:fs/promises";
 import path from "node:path";
+import { prepareOutput, writeFileNoFollow } from "./lib/safe-write.mjs";
+
+const FETCH_TIMEOUT_MS = 10_000;
+const MAX_SVG_BYTES = 1024 * 1024;
+const MAX_META_BYTES = 4 * 1024 * 1024;
 
 /**
  * Vendors Iconify SVGs locally so diagram sources never depend on a runtime
@@ -13,10 +17,58 @@ function usage() {
 Options:
   --out <dir>       Directory to write SVGs into (default: docs/assets/icons)
   --size <pixels>   width/height written into the SVG (default: 64)
+  --force           Allow an --out directory outside the current directory
   --help            Show this help
 
 Example:
   npm run icons -- mdi:database@#2b8a3e simple-icons:redis --out docs/assets/icons`;
+}
+
+/**
+ * Reads a response body with a ceiling, so an oversized or endless reply is cut
+ * off instead of buffered. `content-length` is only a hint; the stream is
+ * counted either way.
+ */
+async function readBounded(response, limit, source) {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limit) {
+    throw new Error(`${source} is larger than the ${limit} byte limit`);
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      throw new Error(`${source} is larger than the ${limit} byte limit`);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+function get(url) {
+  return fetch(url, { redirect: "error", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+}
+
+// Icon sets repeat across a batch; the collection metadata only needs one fetch.
+const collections = new Map();
+
+function loadCollection(prefix) {
+  if (!collections.has(prefix)) {
+    collections.set(
+      prefix,
+      get(`https://api.iconify.design/collections?prefix=${encodeURIComponent(prefix)}`)
+        .then(async (r) =>
+          r.ok ? JSON.parse(await readBounded(r, MAX_META_BYTES, "collection metadata")) : null,
+        )
+        .catch(() => null),
+    );
+  }
+  return collections.get(prefix);
 }
 
 function sanitize(svg, source) {
@@ -39,18 +91,22 @@ async function main(argv) {
   const icons = [];
   let outDir = "docs/assets/icons";
   let size = 64;
+  let force = false;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--help") return process.stdout.write(`${usage()}\n`);
     if (arg === "--out") outDir = argv[++index];
     else if (arg === "--size") size = Number(argv[++index]);
+    else if (arg === "--force") force = true;
     else if (arg.startsWith("--")) throw new Error(`Unknown option: ${arg}`);
     else icons.push(arg);
   }
   if (icons.length === 0) throw new Error("Expected at least one icon id, e.g. mdi:database");
   if (!Number.isFinite(size) || size < 8 || size > 512) throw new Error("size must be 8..512");
 
-  await fs.mkdir(outDir, { recursive: true });
+  // Creates and canonicalises the directory once; the sentinel name is only a
+  // handle for the shared check and is never written.
+  const realOutDir = path.dirname(await prepareOutput(path.join(outDir, ".icons"), { force }));
   const rows = [];
   const failures = [];
   for (const entry of icons) {
@@ -62,7 +118,7 @@ async function main(argv) {
       const url = new URL(`https://api.iconify.design/${prefix}/${name}.svg`);
       if (color) url.searchParams.set("color", color);
 
-      const response = await fetch(url, { redirect: "error" });
+      const response = await get(url);
       if (!response.ok) {
         throw new Error(
           response.status === 404
@@ -70,18 +126,16 @@ async function main(argv) {
             : `${url} returned ${response.status}`,
         );
       }
-      const svg = normalize(sanitize(await response.text(), url.href), size);
+      const body = await readBounded(response, MAX_SVG_BYTES, url.href);
+      const svg = normalize(sanitize(body, url.href), size);
 
-      const file = path.join(outDir, `${prefix}--${name}.svg`);
-      await fs.writeFile(file, svg);
+      const file = path.join(realOutDir, `${prefix}--${name}.svg`);
+      await writeFileNoFollow(file, svg);
 
-      const meta = await fetch(`https://api.iconify.design/collections?prefix=${prefix}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null);
-      const set = meta?.[prefix];
+      const set = (await loadCollection(prefix))?.[prefix];
       rows.push({
         id,
-        file,
+        file: path.relative(process.cwd(), file) || file,
         url: url.href,
         set: set?.name ?? prefix,
         license: set?.license?.title ?? "check https://icon-sets.iconify.design/",
