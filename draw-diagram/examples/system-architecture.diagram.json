@@ -1,0 +1,349 @@
+{
+  "title": "Atlas \u2014 Agentic Document Platform",
+  "subtitle": "Request path, async enrichment pipeline, and trust boundaries (production, eu-west-1)",
+  "style": "clean",
+  "iconsDir": "icons",
+  "nodes": [
+    {
+      "id": "web",
+      "col": 0,
+      "row": 0,
+      "kind": "client",
+      "label": "Web Console",
+      "sublabel": "React SPA",
+      "icon": "mdi--monitor-dashboard.svg"
+    },
+    {
+      "id": "mobile",
+      "col": 0,
+      "row": 1,
+      "kind": "client",
+      "label": "Mobile App",
+      "sublabel": "iOS / Android",
+      "icon": "mdi--cellphone.svg"
+    },
+    {
+      "id": "partner",
+      "col": 0,
+      "row": 2,
+      "kind": "client",
+      "label": "Partner Systems",
+      "sublabel": "server-to-server",
+      "icon": "mdi--server-network.svg"
+    },
+    {
+      "id": "cdn",
+      "col": 1,
+      "row": 0,
+      "kind": "edge",
+      "label": "CloudFront + WAF",
+      "sublabel": "TLS, rate limits",
+      "icon": "mdi--shield-check.svg"
+    },
+    {
+      "id": "apigw",
+      "col": 1,
+      "row": 1,
+      "kind": "edge",
+      "label": "API Gateway",
+      "sublabel": "REST + webhooks",
+      "icon": "mdi--api.svg"
+    },
+    {
+      "id": "auth",
+      "col": 2,
+      "row": 0,
+      "kind": "service",
+      "label": "Auth Service",
+      "sublabel": "JWT, tenant scoping",
+      "icon": "mdi--key-chain-variant.svg"
+    },
+    {
+      "id": "orch",
+      "col": 2,
+      "row": 1,
+      "kind": "service",
+      "label": "Agent Orchestrator",
+      "sublabel": "plans and runs jobs",
+      "icon": "mdi--robot-outline.svg"
+    },
+    {
+      "id": "tools",
+      "col": 2,
+      "row": 2,
+      "kind": "service",
+      "label": "Tool Runtime",
+      "sublabel": "sandboxed executors",
+      "icon": "mdi--hammer-wrench.svg"
+    },
+    {
+      "id": "otel",
+      "col": 2,
+      "row": 4,
+      "kind": "platform",
+      "label": "OTel Collector",
+      "sublabel": "traces, metrics, logs",
+      "icon": "mdi--chart-timeline-variant.svg"
+    },
+    {
+      "id": "queue",
+      "col": 3,
+      "row": 2,
+      "kind": "queue",
+      "label": "Job Queue",
+      "sublabel": "SQS + DLQ",
+      "icon": "mdi--tray-full.svg"
+    },
+    {
+      "id": "ingest",
+      "col": 3,
+      "row": 3,
+      "kind": "worker",
+      "label": "Ingestion Workers",
+      "sublabel": "parse, chunk, embed",
+      "icon": "mdi--cog-sync-outline.svg"
+    },
+    {
+      "id": "pg",
+      "col": 4,
+      "row": 0,
+      "kind": "store",
+      "label": "PostgreSQL",
+      "sublabel": "tenants, runs",
+      "icon": "simple-icons--postgresql.svg"
+    },
+    {
+      "id": "redis",
+      "col": 4,
+      "row": 1,
+      "kind": "store",
+      "label": "Redis",
+      "sublabel": "sessions, rate state",
+      "icon": "simple-icons--redis.svg"
+    },
+    {
+      "id": "s3",
+      "col": 4,
+      "row": 2,
+      "kind": "store",
+      "label": "Object Store",
+      "sublabel": "S3, versioned",
+      "icon": "mdi--bucket-outline.svg"
+    },
+    {
+      "id": "vector",
+      "col": 4,
+      "row": 3,
+      "kind": "store",
+      "label": "Vector Index",
+      "sublabel": "pgvector",
+      "icon": "mdi--database-search.svg"
+    },
+    {
+      "id": "idp",
+      "col": 5,
+      "row": 0,
+      "kind": "external",
+      "label": "Identity Provider",
+      "sublabel": "Okta, OIDC",
+      "icon": "simple-icons--okta.svg"
+    },
+    {
+      "id": "llm",
+      "col": 5,
+      "row": 1,
+      "kind": "external",
+      "label": "Claude API",
+      "sublabel": "Messages + tools",
+      "icon": "simple-icons--anthropic.svg"
+    },
+    {
+      "id": "grafana",
+      "col": 5,
+      "row": 4,
+      "kind": "external",
+      "label": "Grafana Cloud",
+      "sublabel": "dashboards, alerts",
+      "icon": "simple-icons--grafana.svg"
+    }
+  ],
+  "groups": [
+    {
+      "id": "vpc",
+      "title": "AWS VPC \u2014 private subnets",
+      "kind": "boundary",
+      "cols": [
+        2,
+        4
+      ],
+      "rows": [
+        0,
+        4
+      ]
+    },
+    {
+      "id": "edgez",
+      "title": "Public edge",
+      "kind": "zone",
+      "cols": [
+        1,
+        1
+      ],
+      "rows": [
+        0,
+        1
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "web",
+      "to": "cdn",
+      "label": "HTTPS"
+    },
+    {
+      "from": "mobile",
+      "to": "cdn",
+      "label": "HTTPS"
+    },
+    {
+      "from": "partner",
+      "to": "apigw",
+      "label": "REST + mTLS",
+      "kind": "secure"
+    },
+    {
+      "from": "cdn",
+      "to": "apigw",
+      "label": "origin"
+    },
+    {
+      "from": "apigw",
+      "to": "auth",
+      "label": "verify token",
+      "kind": "control"
+    },
+    {
+      "from": "apigw",
+      "to": "orch",
+      "label": "POST /runs"
+    },
+    {
+      "from": "auth",
+      "to": "idp",
+      "label": "OIDC",
+      "kind": "secure"
+    },
+    {
+      "from": "orch",
+      "to": "tools",
+      "label": "invoke tool"
+    },
+    {
+      "from": "orch",
+      "to": "llm",
+      "label": "messages API"
+    },
+    {
+      "from": "orch",
+      "to": "pg",
+      "label": "run state",
+      "kind": "data"
+    },
+    {
+      "from": "orch",
+      "to": "redis",
+      "label": "session",
+      "kind": "data"
+    },
+    {
+      "from": "orch",
+      "to": "queue",
+      "label": "enqueue job",
+      "kind": "async"
+    },
+    {
+      "from": "orch",
+      "to": "vector",
+      "label": "retrieve context",
+      "kind": "data"
+    },
+    {
+      "from": "queue",
+      "to": "ingest",
+      "label": "consume",
+      "kind": "async"
+    },
+    {
+      "from": "ingest",
+      "to": "s3",
+      "label": "store artifacts",
+      "kind": "data"
+    },
+    {
+      "from": "ingest",
+      "to": "vector",
+      "label": "upsert embeddings",
+      "kind": "data"
+    },
+    {
+      "from": "tools",
+      "to": "s3",
+      "label": "signed URLs",
+      "kind": "data"
+    },
+    {
+      "from": "orch",
+      "to": "otel",
+      "label": "traces",
+      "kind": "control"
+    },
+    {
+      "from": "ingest",
+      "to": "otel",
+      "label": "metrics",
+      "kind": "control"
+    },
+    {
+      "from": "otel",
+      "to": "grafana",
+      "label": "OTLP export",
+      "kind": "control"
+    }
+  ],
+  "legend": [
+    {
+      "kind": "client",
+      "label": "Client"
+    },
+    {
+      "kind": "edge",
+      "label": "Edge"
+    },
+    {
+      "kind": "service",
+      "label": "Service"
+    },
+    {
+      "kind": "worker",
+      "label": "Worker"
+    },
+    {
+      "kind": "store",
+      "label": "Data store"
+    },
+    {
+      "kind": "external",
+      "label": "Third party"
+    },
+    {
+      "edgeKind": "async",
+      "label": "Asynchronous"
+    },
+    {
+      "edgeKind": "control",
+      "label": "Telemetry / control"
+    }
+  ],
+  "note": "All cross-boundary traffic is TLS 1.3. Tenant isolation is enforced in the Auth Service and carried as claims through every hop."
+}

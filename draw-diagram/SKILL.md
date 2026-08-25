@@ -1,7 +1,7 @@
 ---
 name: draw-diagram
 description: Creates polished, source-controlled diagrams from requirements, prose, sketches, or existing systems. Recommends Excalidraw first, with D2 as a text-based alternative; uses Iconify icons, prioritizes visual fidelity and clean connector routing, preserves editable sources, renders outputs, and visually inspects every result. Use for architecture, conceptual, component, data-flow, control-flow, sequence, process, deployment, network, ER, trust-boundary, and other technical diagrams.
-compatibility: Requires an interactive question capability and file/image inspection. Icon research requires web access. D2 SVG output requires the `d2` CLI. Bundled Excalidraw PNG export requires Node.js ^20.19 or >=22.12 and its pinned Playwright/Chromium renderer. Manual editor export is also supported. Ask before any global/system install or browser download.
+compatibility: Requires an interactive question capability and file/image inspection. Icon sourcing requires web access. D2 SVG output requires the `d2` CLI. The bundled Excalidraw builder and renderer require Node.js ^20.19 or >=22.12 and its pinned Playwright/Chromium. Manual editor export is also supported. Ask before any global/system install or browser download.
 metadata:
   author: gurbakhshish
   source: extracted from the arch-design skill in this repository
@@ -29,6 +29,7 @@ Do not use this skill when the user primarily needs architecture decisions or a 
 
 - **Diagram work only.** Represent the supplied design faithfully. Do not invent load-bearing components, flows, or behavior; surface ambiguity and ask the user when it changes the meaning.
 - **Excalidraw first, user choice.** Offer **Excalidraw (recommended)** first and **D2** as the alternative unless the user already selected a tool. Explain the trade-off and do not silently choose.
+- **Generate, never hand-write.** Excalidraw scenes come from a diagram spec built by the bundled toolchain. Hand-authored scene JSON is what produces overflowing labels, connectors drawn through components, and stacked arrowheads.
 - **Purpose before notation.** Identify the question each diagram must answer, its audience, and the correct level of detail before drawing.
 - **Visual fidelity first.** Prioritize readable composition, deliberate alignment, whitespace, coherent styling, and clean routing over compactness or generation convenience.
 - **Editable and reproducible.** Preserve `.excalidraw` or `.d2` source, vendor icons locally, render the final asset, and keep generated output synchronized with source.
@@ -39,7 +40,7 @@ Do not use this skill when the user primarily needs architecture decisions or a 
 
 Use the interactive question tool to offer:
 
-- **Excalidraw — recommended first choice.** Best for editable, collaborative, visually expressive diagrams; icon-rich component views; controlled composition; and polished presentation. Source is `.excalidraw`; render to PNG.
+- **Excalidraw — recommended first choice.** Best for editable, collaborative, visually expressive diagrams; icon-rich component views; controlled composition; and polished presentation. Source is a JSON diagram spec that generates an editable `.excalidraw` scene and a rendered PNG.
 - **D2 — text-based alternative.** Best for concise source, reviewable diffs, automatic layout, formal graph-oriented views, and reproducible CLI rendering. Source is `.d2`; render to bundled SVG.
 
 Recommend Excalidraw by default. Recommend D2 when repository workflows, automation, diffability, or graph complexity make declarative source and automatic layout more valuable. If the user already named a tool, use it without asking redundantly. Use one tool consistently across a related diagram set unless the user approves mixed output.
@@ -70,17 +71,17 @@ Use [Iconify](https://iconify.design/) as the canonical source for every non-nat
 - Treat SVGs as untrusted input. Require a successful HTTPS response and reject scripts, event handlers, `foreignObject`, or external references.
 - If Iconify has no suitable icon, use a clear labeled shape. Use another source only with explicit approval and documented provenance/license.
 
-Example from the repository root:
+Use the bundled helper, which fetches over HTTPS, rejects unsafe SVGs, normalizes the icon canvas, and prints a provenance table to paste into the icon-sources section:
 
 ```bash
-mkdir -p docs/assets/icons
-curl --fail --location --silent --show-error \
-  --proto '=https' --proto-redir '=https' \
-  'https://api.iconify.design/mdi/database.svg?color=%232F6FEB' \
-  --output docs/assets/icons/mdi--database.svg
+node <skill-dir>/scripts/excalidraw/icons.mjs \
+  'mdi:database@#2b8a3e' 'simple-icons:redis@#2b8a3e' \
+  --out docs/assets/icons
 ```
 
-For D2 sources in `docs/src/`, use `icon: ../assets/icons/<file>.svg`. For Excalidraw, retain the vendored SVG for provenance and embed its bytes as a `data:image/svg+xml;base64,...` item in the scene's top-level `files`; point the corresponding image element at that file ID. Never leave runtime Iconify URLs in diagram sources.
+Colour each icon to match its node stroke so the set reads as one system. For D2, or when the helper is unavailable, fetch the same URL with `curl --fail --proto '=https'` and inspect the result before use.
+
+For D2 sources in `docs/src/`, use `icon: ../assets/icons/<file>.svg`. For Excalidraw, name the vendored file in the spec's `icon` field; the builder embeds its bytes into the scene's `files` map. Never leave runtime Iconify URLs in diagram sources.
 
 ## Shared visual-quality standard
 
@@ -101,63 +102,85 @@ Reject and regenerate output with clipped or overlapping labels, ambiguous arrow
 
 ## Excalidraw workflow
 
+Excalidraw scenes are **generated from a diagram spec**, never hand-written. The bundled builder measures every label with real Excalidraw font metrics, places nodes on a grid, routes orthogonal connectors around components, puts connector labels in clear space, checks the scene against Excalidraw's own loader, and renders the PNG.
+
+Read `references/diagram-spec.md` for the full spec reference, and start from `examples/system-architecture.diagram.json` rather than a blank file.
+
 ### Authoring conventions
 
-- Keep editable scenes in `docs/src/` as one `.excalidraw` file per diagram, with rendered PNGs in `docs/assets/` using matching basenames.
-- Treat the `.excalidraw` scene as the source of truth; never edit generated PNGs directly.
-- Use a white `viewBackgroundColor`, enable `exportBackground`, disable dark-mode export unless requested, and use consistent export padding and scale.
-- Preserve top-level `type`, `version`, `source`, `elements`, `appState`, and `files`. Keep stable IDs and seeds so unchanged scenes do not churn.
-- Generated scenes must import successfully. Prefer the installed Excalidraw API/schema over invented JSON fields, and prove generated scenes by reopening and exporting them.
-- Prefer short labels, simple rounded shapes, deliberate containers, and coherent Iconify icons.
-- **Prefer elbow/orthogonal arrows** over straight or sharply angled connectors. Route arrows around labels, icons, nodes, and container titles whenever possible.
-- Do not let arrows cross text or pass through components when repositioning, extra waypoints, or additional canvas space can produce a clear route.
-- Favor deliberate alignment, balanced whitespace, readable routing, and polished composition over compactness. Reposition components or enlarge the canvas when needed.
+- Keep the spec at `docs/src/<name>.diagram.json`, the generated scene at `docs/src/<name>.excalidraw`, and the PNG at `docs/assets/<name>.png`.
+- The spec is the source of truth. Regenerate after every change; never edit the generated scene or the PNG by hand.
+- Model columns as tiers of the system (clients, edge, services, async, data, third party) and rows as peers inside a tier. Clean routing follows from disciplined placement.
+- One responsibility per node: `label` names it, `sublabel` carries the technology, runtime, or owner.
+- Use `groups` for real trust, network, ownership, or deployment boundaries only.
+- Choose `kind` for meaning (`client`, `service`, `worker`, `queue`, `store`, `external`, ...), not for decoration, and add a legend when a diagram uses more than a few roles.
+- Prefer fixing crowding by moving a node or widening `layout.colGap` before reaching for `fromSide`/`toSide` overrides.
+- Use `style: "clean"` for architecture and marketing material; `style: "sketch"` when the hand-drawn Excalidraw voice is wanted.
 
 ### Toolchain check
 
-Prefer an existing project-local Excalidraw renderer. Otherwise use this skill's pinned renderer at `scripts/excalidraw-renderer/`, resolving the path relative to this `SKILL.md`:
+Resolve paths relative to this `SKILL.md`:
 
 ```bash
 node --version
-npm --prefix <skill-dir>/scripts/excalidraw-renderer ls --depth=0
+npm --prefix <skill-dir>/scripts/excalidraw ls --depth=0
 ```
 
 If dependencies are absent, run:
 
 ```bash
-npm --prefix <skill-dir>/scripts/excalidraw-renderer ci --ignore-scripts
+npm --prefix <skill-dir>/scripts/excalidraw ci --ignore-scripts
 ```
 
-The lockfile pins Excalidraw, React, Vite, and Playwright. The renderer self-hosts fonts/assets, permits only its loopback origin, and blocks external requests during export.
+The lockfile pins Excalidraw, React, Vite, and Playwright. The builder self-hosts fonts and assets, permits only its loopback origin, and blocks external requests.
 
-Attempt rendering before installing a browser. If Chromium is missing, ask before this large download:
+Attempt a build before installing a browser. If Chromium is missing, ask before this large download:
 
 ```bash
-npm --prefix <skill-dir>/scripts/excalidraw-renderer exec -- playwright install chromium
+npm --prefix <skill-dir>/scripts/excalidraw exec -- playwright install chromium
 ```
 
-Ask before any global or system install. For sensitive diagrams, prefer the local network-blocked renderer over a hosted editor.
+Ask before any global or system install. For sensitive diagrams, prefer the local network-blocked toolchain over a hosted editor.
 
-### Render Excalidraw
+### Build and render
 
-Use this order unless the repository has an approved renderer:
-
-1. **Bundled official-API renderer:** preferred for automation; uses the pinned Excalidraw `exportToBlob` API through Playwright/Chromium.
-2. **Official editor export:** first-party fidelity but interactive and less reproducible.
-3. **Official `exportToSvg` followed by tested rasterization:** validate fonts, embedded images, filters, and dimensions.
-4. **Fixed browser canvas/container screenshot:** last resort; hide UI, clear selections, fit content, and validate crop and fonts.
-5. **Third-party CLI:** opt-in only; pin and inspect it, prohibit runtime code downloads, and verify support for every scene feature used.
-
-Render from the repository root with absolute paths:
+Run from the repository root with absolute or repo-relative paths:
 
 ```bash
-npm --prefix <skill-dir>/scripts/excalidraw-renderer run render -- \
-  "$PWD/docs/src/system_context.excalidraw" \
-  "$PWD/docs/assets/system_context.png" \
-  --scale 2 --padding 32 --background '#ffffff'
+node <skill-dir>/scripts/excalidraw/diagram.mjs docs/src/system_context.diagram.json \
+  --scene docs/src/system_context.excalidraw \
+  --png docs/assets/system_context.png \
+  --scale 2 --padding 32
 ```
 
-The bundled renderer accepts `--scale` from `0.25` to `4`, `--padding` from `0` to `256`, and `--background`. Pin renderer/browser versions, fonts, locale, viewport, DPR, scale, background, and padding when reproducible pixels matter.
+The builder validates the spec, fails loudly on duplicate ids, occupied cells, unknown kinds, and unknown node references, and prints one of:
+
+- `ok: N elements, no layout warnings` — the scene placed cleanly.
+- one `warning:` line per defect — a connector with no clean route, a connector crossing a component, a label with no clear space, a label wider than its box, or an element Excalidraw would drop on import.
+
+Treat every warning as a defect. Fix it in the spec and rebuild; do not ship a warned build. Then inspect the PNG and iterate on anything the checks cannot see, such as ordering, emphasis, or a grouping that reads wrong.
+
+`--no-png` writes only the scene. `--background` also sets the colour that connector labels mask with, so keep it consistent between builds.
+
+To re-render a scene that was edited in the Excalidraw editor, use the renderer directly:
+
+```bash
+node <skill-dir>/scripts/excalidraw/render.mjs docs/src/system_context.excalidraw \
+  docs/assets/system_context.png --scale 2 --padding 32
+```
+
+Editor round-trips are supported but lossy in one direction: the spec cannot absorb manual edits, so fold any keeper change back into the spec.
+
+### Renderer alternatives
+
+Use these only when the bundled toolchain is unavailable, and say so in the delivery notes:
+
+1. **Official editor export:** first-party fidelity but interactive and less reproducible.
+2. **Official `exportToSvg` followed by tested rasterization:** validate fonts, embedded images, filters, and dimensions.
+3. **Fixed browser canvas/container screenshot:** last resort; hide UI, clear selections, fit content, and validate crop and fonts.
+4. **Third-party CLI:** opt-in only; pin and inspect it, prohibit runtime code downloads, and verify support for every scene feature used.
+
+Pin renderer/browser versions, fonts, locale, viewport, DPR, scale, background, and padding when reproducible pixels matter.
 
 ## D2 workflow
 
@@ -226,20 +249,21 @@ Use D2's process status as the success signal; a failed render can leave a parti
    - Avoid combining incompatible abstraction levels.
 
 4. **Verify only the selected toolchain.**
-   - For Excalidraw, identify the approved renderer and ask before browser or system downloads.
+   - For Excalidraw, check the bundled builder's dependencies and ask before browser or system downloads.
    - For D2, verify the CLI, present available layout engines with explanations and a recommendation, and ask the user to choose.
 
 5. **Propose the drawing.**
-   - Summarize nodes, groups, boundaries, key edges, notation, orientation, icons, and save paths.
+   - Summarize nodes and their tiers, groups, boundaries, key edges, notation, orientation, icons, and save paths.
    - Identify candidate Iconify IDs and labeled-shape fallbacks.
    - Get approval unless immediate generation was explicitly requested or the specification is already approved.
 
-6. **Author and render.**
-   - Write editable source, vendor and inspect icons, render the correct output format, and preserve consistent settings.
+6. **Author and build.**
+   - For Excalidraw, write the diagram spec, vendor icons, and run the builder; for D2, write the `.d2` source and render it.
    - Record icon provenance/license when icons are used.
 
 7. **Inspect and iterate.**
-   - Inspect every actual SVG or PNG with available file/image tools.
+   - Clear every builder warning first; each one names a defect to fix in the source.
+   - Then inspect the actual PNG or SVG with available image tools, including a close crop of any dense region.
    - Fix semantic errors, clipping, overlap, poor balance, unreadable labels, awkward arrows, and avoidable crossings.
    - Repeat until visual fidelity and semantic accuracy pass the quality standard.
 
@@ -254,7 +278,8 @@ Use D2's process status as the success signal; a failed render can leave a parti
 
 Ask where to save files before writing when the user has not specified a location. Defaults:
 
-- editable sources: `docs/src/<diagram-name>.excalidraw` or `docs/src/<diagram-name>.d2`
+- Excalidraw spec and generated scene: `docs/src/<diagram-name>.diagram.json` and `docs/src/<diagram-name>.excalidraw`
+- D2 source: `docs/src/<diagram-name>.d2`
 - rendered assets: `docs/assets/<diagram-name>.png` for Excalidraw or `docs/assets/<diagram-name>.svg` for D2
 - vendored icons: `docs/assets/icons/`
 
@@ -268,7 +293,7 @@ Before reporting completion, verify:
 - labels, direction, ordering, boundaries, and relationships match the source material
 - editable source imports or validates successfully
 - icons are safe, local, licensed, and documented
-- Excalidraw uses clean elbow routing where practical
+- the Excalidraw build reported no warnings, and its spec, scene, and PNG are in sync
 - D2 uses the user-selected available layout engine
 - no connector unnecessarily crosses text, icons, nodes, or container titles
 - typography, spacing, alignment, icon scale, and styling are coherent

@@ -1,9 +1,11 @@
 {
   "name": "@local/draw-diagram-excalidraw-renderer",
   "version": "1.0.0",
-  "description": "Pinned local renderer for .excalidraw scenes",
+  "description": "Pinned local builder and renderer for .excalidraw diagrams",
   "scripts": {
-    "render": "node render.mjs"
+    "render": "node render.mjs",
+    "diagram": "node diagram.mjs",
+    "icons": "node icons.mjs"
   },
   "license": "UNLICENSED",
   "type": "module",

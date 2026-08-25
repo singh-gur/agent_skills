@@ -89,12 +89,14 @@ Use it when you need help with:
 What it does:
 
 - recommends Excalidraw first and offers D2 as a text-based alternative
-- preserves editable source and renders Excalidraw PNGs or bundled D2 SVGs
-- uses Iconify icons with local vendoring, safety checks, and license provenance
-- prioritizes visual fidelity, orthogonal connectors, readable spacing, and routes that avoid text and components
+- generates Excalidraw scenes from a JSON diagram spec instead of hand-written scene JSON
+- lays out nodes on a grid, routes orthogonal connectors around components, and places connector labels in clear space
+- measures every label with real Excalidraw font metrics, so text never overflows its box
+- vendors Iconify icons locally with safety checks and license provenance
+- validates each scene against Excalidraw's own loader and reports layout defects as warnings
 - lets the user choose among installed D2 layout engines after receiving explanations and a recommendation
 - inspects every rendered asset and iterates until semantic and visual quality pass
-- includes its own pinned, network-blocked Excalidraw renderer
+- includes its own pinned, network-blocked Excalidraw builder and renderer
 
 Skill path in this repo:
 
@@ -288,13 +290,22 @@ Current skills in this repo:
 │   └── SKILL.md
 ├── draw-diagram/
 │   ├── SKILL.md
+│   ├── references/
+│   │   └── diagram-spec.md
+│   ├── examples/
+│   │   ├── icons/
+│   │   ├── system-architecture.diagram.json
+│   │   └── system-architecture.png
 │   └── scripts/
-│       └── excalidraw-renderer/
+│       └── excalidraw/
+│           ├── browser/renderer.js
+│           ├── lib/
+│           ├── diagram.mjs
+│           ├── icons.mjs
 │           ├── index.html
 │           ├── package.json
 │           ├── package-lock.json
-│           ├── render.mjs
-│           └── renderer-browser.js
+│           └── render.mjs
 ├── plan/
 │   └── SKILL.md
 ├── spec-writer/
