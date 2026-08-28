@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -254,7 +255,7 @@ function main() {
 }
 
 const isMain = process.argv[1]
-  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isMain) {
   try {
