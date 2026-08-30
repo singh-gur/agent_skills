@@ -200,6 +200,29 @@ What it does:
 
 Skill path in this repo: `superwork/SKILL.md`
 
+### `setup-ci`
+
+Gathers CI requirements through a four-area intake and scaffolds Concourse or Forgejo CI pipelines for the current repository, wiring build, test, and security gates to real project commands.
+
+Use it when you need help with:
+
+- setting up CI for a new or existing repository
+- choosing between Concourse and Forgejo CI
+- scaffolding pipeline files with testing and security gates
+- extending existing Concourse or Forgejo CI workflows
+
+What it does:
+
+- collects platform, artifact, quality-gate, and pipeline-context requirements before writing CI config
+- inspects the repository for stack evidence and real commands
+- scaffolds `ci/pipeline.yml` for Concourse or `.forgejo/workflows/*.yml` for Forgejo CI
+- adds commented placeholders for secrets and external integrations
+- validates syntax when tooling is available and reports manual setup steps
+
+Skill path in this repo:
+
+- `setup-ci/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -251,6 +274,12 @@ Install the `superwork` skill from this repository:
 
 ```bash
 npx skills add singh-gur/agent_skills --skill superwork -g -y
+```
+
+Install the `setup-ci` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill setup-ci -g -y
 ```
 
 ### Command breakdown
