@@ -223,6 +223,30 @@ Skill path in this repo:
 
 - `setup-ci/SKILL.md`
 
+### `arcane-compose`
+
+Scaffolds Docker Compose apps for Arcane GitOps sync (getarcane.app).
+
+Use it when you need help with:
+
+- turning an app idea ("set up paperless", "a wiki with postgres", "n8n automation stack") into a deployable Compose project
+- fleshing out services, images, volumes, and env vars for an app
+- committing `compose.yaml` + `.env` to a gitops repo that Arcane syncs
+- editing or troubleshooting existing Arcane-managed compose apps
+
+What it does:
+
+- resolves the gitops repo (env var, cwd detection, or one question)
+- researches the app's real image, env vars, ports, and healthchecks instead of guessing
+- writes `apps/<name>/compose.yaml`, `.env` (safe defaults, `CHANGE_ME` secrets), and `.env.example`
+- uses `env_file: .env` and `x-arcane` tags so Arcane overrides and grouping work
+- validates with `docker compose config` when available and commits
+- emits ready-to-paste Arcane "From Git Repo" import JSON
+
+Skill path in this repo:
+
+- `arcane-compose/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -282,6 +306,12 @@ Install the `setup-ci` skill from this repository:
 npx skills add singh-gur/agent_skills --skill setup-ci -g -y
 ```
 
+Install the `arcane-compose` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill arcane-compose -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -302,6 +332,8 @@ Current skills in this repo:
 - `skill-writer`
 - `agent-loadout`
 - `superwork`
+- `setup-ci`
+- `arcane-compose`
 
 ## Source layout
 
@@ -336,6 +368,10 @@ Current skills in this repo:
 │           ├── package-lock.json
 │           └── render.mjs
 ├── plan/
+│   └── SKILL.md
+├── setup-ci/
+│   └── SKILL.md
+├── arcane-compose/
 │   └── SKILL.md
 ├── spec-writer/
 │   ├── SKILL.md
