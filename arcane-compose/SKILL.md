@@ -1,6 +1,6 @@
 ---
 name: arcane-compose
-description: Scaffolds Docker Compose apps for Arcane GitOps sync (getarcane.app). Use when the user describes an app idea ("set up paperless", "a wiki with postgres", "n8n automation stack") and wants it fleshed out into a compose.yaml + .env committed to a gitops repo that Arcane syncs and deploys. Also use for editing or troubleshooting existing Arcane-managed compose apps.
+description: Scaffolds and maintains Docker Compose apps specifically for Arcane GitOps sync (getarcane.app). Use only when the user explicitly mentions Arcane, requests Arcane GitOps/import integration, or project instructions identify the app as Arcane-managed. Do not use for generic or non-Arcane Docker Compose work; when Arcane ownership is unclear, use a normal Compose workflow instead.
 compatibility: Needs a git repo for gitops output; docker compose CLI for optional validation.
 metadata:
   author: gurbakhshish
@@ -10,6 +10,18 @@ metadata:
 # Arcane Compose
 
 Turn an app idea into an Arcane GitOps-synced Compose project.
+
+## Activation gate
+
+Use this skill only when Arcane usage is explicit in the request or established by project instructions.
+
+Do not use it for:
+
+- generic Docker Compose creation, editing, review, or troubleshooting
+- Compose projects deployed without Arcane
+- ambiguous Compose requests that merely resemble the layout used here
+
+When Arcane ownership is unclear, proceed with a normal Docker Compose workflow instead of asking the user to adopt Arcane.
 
 ## Layout
 
