@@ -5,6 +5,8 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
 function isPiPackageRoot(path) {
   const packageFile = join(path, "package.json");
   if (!existsSync(packageFile)) return false;
@@ -21,6 +23,7 @@ export function findPiPackageRoot() {
   if (process.env.PI_PACKAGE_DIR) {
     const configured = resolve(process.env.PI_PACKAGE_DIR);
     if (isPiPackageRoot(configured)) return configured;
+    throw new Error("PI_PACKAGE_DIR must point to an npm-installed Pi package.");
   }
 
   const command = process.platform === "win32" ? "where" : "which";
@@ -34,14 +37,16 @@ export function findPiPackageRoot() {
     throw new Error("Cannot locate Pi. Ensure the pi command is available.");
   }
 
-  const root = dirname(dirname(realpathSync(executable)));
-  if (!isPiPackageRoot(root)) {
-    throw new Error(
-      "The pi command is not an npm-installed @earendil-works/pi-coding-agent package.",
-    );
+  let root = dirname(realpathSync(executable));
+  while (true) {
+    if (isPiPackageRoot(root)) return root;
+    const parent = dirname(root);
+    if (parent === root) break;
+    root = parent;
   }
-
-  return root;
+  throw new Error(
+    "The pi command is not inside an npm-installed Pi package. Set PI_PACKAGE_DIR for wrapper commands.",
+  );
 }
 
 export function rankModelMatches(models, query, fuzzyFilter, limit = 10) {
@@ -60,9 +65,16 @@ export function rankModelMatches(models, query, fuzzyFilter, limit = 10) {
       ? idMatches[0]
       : undefined;
 
+  if (exact) return [{ model: exact, exact: true }];
+
+  // Keep a recognized provider qualifier from drifting to another provider.
+  const provider = normalized.split("/", 1)[0];
+  const candidates = normalized.includes("/") && models.some((model) => model.provider.toLowerCase() === provider)
+    ? models.filter((model) => model.provider.toLowerCase() === provider)
+    : models;
   return fuzzyFilter(
-    models,
-    query,
+    candidates,
+    query.trim(),
     (model) => {
       const name = model.name ? ` ${model.name}` : "";
       return `${model.provider} ${model.provider}/${model.id} ${model.provider} ${model.id}${name}`;
@@ -89,22 +101,62 @@ export function describeMatches(
   }));
 }
 
-function parseArguments(argv) {
+export function parseArguments(argv, allowedFlags, switches = []) {
   const [command, ...tokens] = argv;
   const values = {};
-
-  for (let index = 0; index < tokens.length; index += 2) {
+  for (let index = 0; index < tokens.length; index += 1) {
     const flag = tokens[index];
-    const value = tokens[index + 1];
-
-    if (!flag?.startsWith("--") || value === undefined) {
-      throw new Error(`Invalid argument near '${flag ?? ""}'.`);
+    const name = flag?.slice(2);
+    if (!flag?.startsWith("--") || !allowedFlags.includes(name)) {
+      throw new Error("Unknown option. Check the skill's helper command syntax.");
     }
-
-    values[flag.slice(2)] = value;
+    if (Object.hasOwn(values, name)) throw new Error(`Duplicate option: --${name}.`);
+    if (switches.includes(name)) {
+      values[name] = true;
+    } else {
+      const value = tokens[++index];
+      if (value === undefined || value.startsWith("--")) throw new Error(`--${name} needs a value.`);
+      values[name] = value;
+    }
   }
-
   return { command, values };
+}
+
+export function validateRequests(requests) {
+  if (!Array.isArray(requests) || requests.length < 1 || requests.length > 6) {
+    throw new Error("Provide between one and six model requests.");
+  }
+  for (const request of requests) {
+    if (!request || typeof request !== "object" || Array.isArray(request)
+      || Object.keys(request).some((key) => !["query", "preferredThinking"].includes(key))
+      || typeof request.query !== "string" || !request.query.trim()) {
+      throw new Error("Each request needs a non-empty query and optional preferredThinking.");
+    }
+    if (/:(off|minimal|low|medium|high|xhigh|max|inherit)$/.test(request.query.trim())) {
+      throw new Error("Supply thinking separately, not as a model suffix.");
+    }
+    if (request.preferredThinking !== undefined && !THINKING_LEVELS.includes(request.preferredThinking)) {
+      throw new Error("Invalid preferred thinking level.");
+    }
+  }
+  return requests;
+}
+
+export function searchModels(models, requests, helpers, limit = 10) {
+  validateRequests(requests);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
+    throw new Error("--limit must be an integer from 1 to 20.");
+  }
+  return requests.map(({ query, preferredThinking }) => {
+    const ranked = rankModelMatches(models, query, helpers.fuzzyFilter, Infinity);
+    return {
+      query,
+      totalMatches: ranked.length,
+      truncated: ranked.length > limit,
+      matches: describeMatches(ranked.slice(0, limit), helpers.getSupportedThinkingLevels,
+        helpers.clampThinkingLevel, preferredThinking),
+    };
+  });
 }
 
 async function loadPiModules() {
@@ -128,35 +180,38 @@ async function loadPiModules() {
 }
 
 async function main() {
-  const { command, values } = parseArguments(process.argv.slice(2));
-  if (command !== "search") throw new Error("Expected command: search.");
-  if (!values.query?.trim()) throw new Error("--query is required.");
-
+  const command = process.argv[2];
+  if (!["search", "batch"].includes(command)) throw new Error("Expected command: search or batch.");
+  const { values } = parseArguments(process.argv.slice(2), command === "search"
+    ? ["query", "preferred-thinking", "limit"] : ["requests", "limit"]);
+  let requests;
+  if (command === "search") {
+    requests = [{ query: values.query, preferredThinking: values["preferred-thinking"] }];
+  } else {
+    try {
+      requests = JSON.parse(values.requests);
+    } catch {
+      throw new Error("--requests must be a JSON array of model queries.");
+    }
+  }
+  validateRequests(requests);
   const limit = values.limit === undefined ? 10 : Number(values.limit);
   if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
     throw new Error("--limit must be an integer from 1 to 20.");
   }
 
-  const {
-    ModelRuntime,
-    fuzzyFilter,
-    getSupportedThinkingLevels,
-    clampThinkingLevel,
-  } = await loadPiModules();
-
-  const signal = AbortSignal.timeout(15_000);
-  const runtime = await ModelRuntime.create({ signal });
-  const models = runtime.getModels();
-  const ranked = rankModelMatches(models, values.query, fuzzyFilter, limit);
-
+  const helpers = await loadPiModules();
+  let runtime;
+  try {
+    runtime = await helpers.ModelRuntime.create({ signal: AbortSignal.timeout(15_000) });
+  } catch {
+    throw new Error("Model catalog discovery failed. Check Pi/provider setup; no settings were changed.");
+  }
+  const results = searchModels(runtime.getModels(), requests, helpers, limit);
   console.log(JSON.stringify({
-    query: values.query,
-    matches: describeMatches(
-      ranked,
-      getSupportedThinkingLevels,
-      clampThinkingLevel,
-      values["preferred-thinking"],
-    ),
+    catalog: "standalone Pi catalog; session extension registrations are not loaded",
+    launchVerified: false,
+    ...(command === "search" ? results[0] : { results }),
   }, null, 2));
 }
 

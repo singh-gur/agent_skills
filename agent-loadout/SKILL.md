@@ -1,7 +1,7 @@
 ---
 name: agent-loadout
-description: Configures persistent pi-subagents model and thinking overrides using four capability tiers. Use when the user explicitly invokes agent-loadout set, unset, or status to configure the builtin scout, researcher, reviewer, delegate, worker, and oracle agents at user or project scope.
-compatibility: Requires an npm-installed Pi, pi-subagents, Node.js, and permission to update Pi user or project settings.
+description: Configures persistent pi-subagents model and thinking overrides using three capability tiers or individual roles. Use when the user explicitly invokes agent-loadout set, unset, status, or doctor for scout, delegate, researcher, worker, reviewer, or oracle at user or project scope.
+compatibility: Requires npm-installed Pi, pi-subagents, Node.js, and permission to update Pi settings. Helper integration checked against Pi 0.85.1 and pi-subagents 0.65.1; compatible versions must expose the same APIs.
 metadata:
   author: gurbakhshish
   source: custom
@@ -10,173 +10,197 @@ metadata:
 
 # Agent Loadout
 
-Configure persistent `pi-subagents` model and thinking overrides by assigning its builtin agents to four capability tiers.
+Configure persistent model/thinking defaults. Superwork owns execution and role
+selection; this skill never routes individual tasks or changes the root model.
 
-This skill changes Pi settings. It does not classify individual tasks, alter subagent launches, or provide runtime ON/OFF routing.
-
-## Agent tiers
-
-Use this fixed mapping:
+## Three tiers
 
 | Tier | Intended use | Agents | Preferred thinking |
 |---|---|---|---|
-| T1 | Fast reconnaissance and research | `scout`, `researcher` | `low` |
-| T2 | Review and lightweight delegation | `reviewer`, `delegate` | `medium` |
-| T3 | Standard implementation | `worker` | `high` |
-| T4 | Difficult advisory reasoning | `oracle` | `xhigh` |
+| T1 | Fast reconnaissance and lightweight delegation | `scout`, `delegate` | `low` |
+| T2 | Substantive research and implementation | `researcher`, `worker` | `high` |
+| T3 | Strong review and advisory reasoning | `reviewer`, `oracle` | `xhigh` |
 
-Preferred thinking values are recommendations only. Obtain valid choices from the selected model rather than assuming every model supports them.
+Tiers are setup defaults, not mandatory coupling. Allow targeted role changes.
+Thinking values are recommendations: offer only the selected model's supported
+levels and use Pi's clamped recommendation. `advisor` resolves to `oracle`;
+never create an `advisor` override.
 
-`advisor` is an alias for `oracle`; do not create a separate override for it.
-
-Overrides follow normal `pi-subagents` precedence. An agent definition that explicitly declares `model` or `thinking` can take precedence over `agentOverrides`.
+Existing settings store role names, not tier numbers. Do not migrate or rewrite
+saved overrides automatically. T4 and old four-tier helper flags are unsupported.
 
 ## Commands
 
-Parse the argument after `/skill:agent-loadout`:
+Parse arguments after `/skill:agent-loadout`:
 
 | Command | Action |
 |---|---|
-| `set [user\|project]` | Ask for tier models, resolve them against Pi's known model catalog, ask for supported thinking levels, then set agent overrides. |
-| `unset [user\|project]` | Remove model and thinking overrides for the mapped agents. |
-| `status [user\|project\|all]` | Show only the mapped agents' configured overrides. |
+| `set [user\|project] [all\|T1\|T2\|T3\|agent]` | Configure selected tiers or role; omitted target means all. |
+| `unset [user\|project] [all\|T1\|T2\|T3\|agent]` | Remove only selected model/thinking overrides. |
+| `status [user\|project\|all]` | Show saved overrides, not effective runtime behavior. |
+| `doctor [user\|project\|all]` | Compare saved overrides with native runtime diagnostics. |
 | no argument | Same as `status all`. |
 
-Do not support the previous `on`, `off`, `manual`, one-shot tier, or per-launch routing commands.
+Ask for scope only when omitted for set/unset. Status/doctor default to all.
+Reject unknown arguments. Do not support on/off, automatic escalation, or presets.
 
-## Settings paths
+## Scope and precedence
 
-Resolve the target settings file before changing anything:
+Resolve and show the exact settings path before any write:
 
-- User scope: `$PI_CODING_AGENT_DIR/settings.json` when `PI_CODING_AGENT_DIR` is set; otherwise `~/.pi/agent/settings.json`.
-- Project scope: the current Pi project root's `.pi/settings.json`.
+- User: `$PI_CODING_AGENT_DIR/settings.json`, otherwise `~/.pi/agent/settings.json`.
+- Project: the trusted Pi project root's `.pi/settings.json`.
 
-For project scope:
+Prefer the native runtime's reported project root. Otherwise find the nearest
+ancestor with `.pi` or `.agents` and honor `subagents.projectRootResolution`:
+a nearer explicit `nearest` wins; `git-root` selects the configured Git worktree
+root when present. Outside configured projects, propose `<git-root>/.pi/settings.json`
+or `<cwd>/.pi/settings.json` and obtain confirmation before creating it. Do not
+inspect unrelated settings or sensitive values to resolve scope.
 
-1. Find the nearest ancestor containing `.pi` or `.agents`.
-2. Honor an existing `subagents.projectRootResolution` value of `nearest` or `git-root`.
-3. If no configured project root exists, propose `<git-root>/.pi/settings.json`, or `<cwd>/.pi/settings.json` outside Git, and require confirmation before creating it.
+Matching `agentOverrides` replace model/thinking frontmatter, including on custom
+agents shadowing builtins. Provider-scoped overrides can supersede ordinary
+overrides within a scope; project settings take precedence over user settings.
+Per-run model choices (including thinking suffixes) can supersede loaded defaults.
+Use native runtime inspection rather than implementing another precedence merger.
+Model-scope restrictions and thinking ceilings still apply.
 
-Only use project scope for a project the user trusts.
+## Helpers
 
-## Helper scripts
+Resolve scripts relative to this skill:
 
-Resolve both scripts relative to this `SKILL.md`:
+- `scripts/model-options.mjs`: exact-first/fuzzy catalog search and batched,
+  model-specific thinking choices using Pi's ModelRuntime and thinking helpers.
+- `scripts/agent-overrides.mjs`: validated saved status, targeted previews and
+  revision-checked writes. Modifies only mapped roles' `model` and `thinking`.
 
-- `scripts/model-options.mjs` searches Pi's composed model catalog and reports model-specific thinking levels.
-- `scripts/agent-overrides.mjs` reads or changes the selected settings file.
+The standalone catalog does not load the current session's provider extensions.
+Catalog membership is not authentication, policy, or successful-launch proof.
+For missing extension-provided models, run doctor and report this limitation;
+do not invent a match, load arbitrary extensions, or read credentials. Stop a
+set operation if supported model/thinking metadata cannot be verified.
 
-The model helper uses Pi's own `ModelRuntime`, fuzzy matcher, `getSupportedThinkingLevels()`, and `clampThinkingLevel()`. It does not display credentials.
-
-The settings helper accepts an explicit settings path and modifies only:
-
-```text
-subagents.agentOverrides.<mapped-agent>.model
-subagents.agentOverrides.<mapped-agent>.thinking
-```
-
-It never prints unrelated settings.
+Use `PI_PACKAGE_DIR` only to identify a trusted npm-installed Pi package if PATH
+uses a wrapper or another installation. Invalid paths fail rather than silently
+selecting another Pi. The settings writer reuses Pi's installed `proper-lockfile`;
+no additional dependency is needed.
 
 ## Set workflow
 
-For `set`:
+1. Resolve scope/target and run saved status:
 
-1. Resolve the requested scope. If omitted, ask whether to use `user` or `project`.
-2. Run the settings helper's `status` command for that settings file.
-3. Open one `ask_user` form containing one text question for each tier's model.
-4. Recommend a currently consistent tier model when every mapped agent in that tier has the same override.
-5. Ask for a model name, ID, or `provider/model` reference without an appended thinking suffix.
-6. For each tier, run:
+   ```bash
+   node <skill-root>/scripts/agent-overrides.mjs status --file "<settings-path>"
+   ```
 
-```bash
-node <skill-root>/scripts/model-options.mjs search \
-  --query <user-model-text> \
-  --preferred-thinking <tier-preference>
-```
+2. Ask only for the selected tiers/role, in one form. Recommend a current model
+   only when selected roles agree. Explicitly allow blank input to keep existing
+   overrides unchanged, including intentional differences within a tier. If all
+   inputs are blank, stop without writing. For a thinking-only change, keep the
+   current model and validate it normally; do not make the user rediscover it.
+3. Batch the non-blank model queries in one runtime (at most six requests):
 
-Run independent tier searches in parallel when possible.
+   ```bash
+   node <skill-root>/scripts/model-options.mjs batch --requests \
+     '[{"query":"<model text>","preferredThinking":"high"}]'
+   ```
 
-7. Resolve each search result:
-   - If there are no matches, ask for a different query.
-   - If exactly one result is marked `exact`, use it.
-   - If there is only one result, use it.
-   - Otherwise, ask the user to choose from the ranked matches.
-   - Store the canonical `provider/model` value, never the original fuzzy query.
-8. Ask for each tier's thinking level using only the selected result's `thinkingLevels`.
-   - If only one level is supported, select it without asking.
-   - Recommend the result's `preferredThinking`.
-   - Never offer or store a thinking level absent from `thinkingLevels`.
-9. Show the exact settings path and resulting mapping.
-10. Warn when existing model or thinking fields will be replaced.
-11. Require explicit confirmation.
-12. Re-run the model helper once per selected canonical model. Stop without writing if:
-    - the canonical model is no longer an exact known match; or
-    - the chosen thinking level is no longer listed in `thinkingLevels`.
-13. Run:
+   Single-query `search --query "<model text>" --preferred-thinking high` also
+   works. Require model text without a thinking suffix. Use the unique exact
+   match; otherwise auto-select only when `totalMatches` is one. When ambiguous,
+   ask the user to choose. If `truncated` is true, offer query refinement instead
+   of implying the displayed matches are exhaustive. No matches: refine the query
+   or diagnose a catalog limitation. Store canonical `provider/model` only.
+4. Ask for supported thinking choices in one form. Use each result's
+   `thinkingLevels` and `preferredThinking`; select a sole supported level without
+   another question. Preserve a currently consistent thinking choice if supported.
+5. Build policies keyed by the selected tier or canonical role. Omit unchanged
+   groups. Do not combine overlapping targets (for example, T3 and reviewer).
+   Preview the exact diff:
 
-```bash
-node <skill-root>/scripts/agent-overrides.mjs set \
-  --file <settings-path> \
-  --t1-model <canonical-model> --t1-thinking <validated-level> \
-  --t2-model <canonical-model> --t2-thinking <validated-level> \
-  --t3-model <canonical-model> --t3-thinking <validated-level> \
-  --t4-model <canonical-model> --t4-thinking <validated-level>
-```
+   ```bash
+   node <skill-root>/scripts/agent-overrides.mjs set --file "<settings-path>" \
+     --policies '{"reviewer":{"model":"provider/model","thinking":"high"}}' --dry-run
+   ```
 
-14. Show the settings helper's summary and tell the user to reload or restart Pi before relying on the new mapping.
+6. Show the path and before/after model/thinking values. Explain which existing
+   fields are replaced and whether the change is user-wide. No changes: stop.
+   Retain the preview's `Revision` and require explicit confirmation.
+7. Revalidate all selected canonical models in one batch, deduplicating identical
+   model queries. For each assignment, require an exact canonical match and the
+   chosen level in `thinkingLevels`. Stop without writing on any failure.
+8. Apply the same policies with the approved revision:
 
-The settings helper retains its general Pi thinking-level syntax check as a final guard. Model-specific availability comes exclusively from the model helper.
+   ```bash
+   node <skill-root>/scripts/agent-overrides.mjs set --file "<settings-path>" \
+     --policies '{"reviewer":{"model":"provider/model","thinking":"high"}}' \
+     --expect "<approved-preview-revision>"
+   ```
+
+   If settings changed, preview again and obtain fresh approval. Never silently
+   replace the expected revision. On lock contention, wait for the other writer
+   to finish; do not delete its lock or switch to an unguarded writer.
+9. Show the result. Require reload/restart and recommend doctor before relying
+   on the new mapping; do not claim that saving settings updates a live session.
 
 ## Unset workflow
 
-For `unset`:
-
-1. Resolve the requested scope. If omitted, ask whether to use `user` or `project`.
-2. Run the settings helper's `status` command.
-3. Explain that unset removes only `model` and `thinking` from:
-   - `scout`
-   - `researcher`
-   - `reviewer`
-   - `delegate`
-   - `worker`
-   - `oracle`
-4. Warn that this also removes matching overrides that may predate this skill.
-5. Require explicit confirmation.
-6. Run:
+Resolve scope/target, then preview:
 
 ```bash
-node <skill-root>/scripts/agent-overrides.mjs unset \
-  --file <settings-path>
+node <skill-root>/scripts/agent-overrides.mjs unset --file "<settings-path>" \
+  --target reviewer --dry-run
 ```
 
-7. Show the settings helper's summary and tell the user to reload or restart Pi.
+Use all, T1, T2, T3, or a mapped role as the target. Explain that unset removes
+only model/thinking, including overrides predating this skill. It is **not undo**:
+it does not restore previous values, and other scopes/provider overrides may
+still configure the role. Preserve other fields; remove only emptied role and
+agentOverrides objects. If nothing changes, stop without creating files.
 
-Preserve every other override field. Remove a mapped agent's override object only when it becomes empty.
+Obtain explicit approval, then repeat the command without `--dry-run`, adding
+`--expect "<approved-preview-revision>"`. On a revision conflict, preview and
+confirm again. Report the result and the reload/restart requirement.
 
-## Status workflow
+## Status and doctor
 
-For `status`:
+Run the settings helper's status command once per selected settings file. Report
+missing files, unset/cleared fields, invalid structure, and mixed tier overrides.
+Mixed values may be intentional after targeted edits. Do not treat invalid
+settings as unset. Show only loadout-relevant values, never raw settings.
 
-- `status user`: inspect only user settings.
-- `status project`: inspect only project settings.
-- `status all` or no argument: inspect both.
-- Do not print unrelated settings values.
-- Clearly distinguish missing files, unset fields, and conflicting values within a tier.
-- Remind the user that the live runtime mapping may remain stale until Pi reloads.
+Doctor also uses native read-only inspection, not test launches:
 
-Run once per selected settings file:
+1. Call `subagent({ action: "list", capabilities: true })` to identify available
+   roles, shadowing, disabled/missing roles, and runner types. A runner's passive
+   availability is not authentication or launch proof.
+2. Call `subagent({ action: "models" })` for loaded mappings, or direct the user
+   to `/subagents-models` if native inspection is unavailable. Filter the report
+   to mapped roles. Never fall back to dumping settings or auth files.
+3. Show saved vs loaded model/thinking and native source information when
+   available. Explain project/provider overrides, per-run exceptions, and stale
+   sessions rather than assuming every difference is a bug. Do not infer a
+   source or effective value when native diagnostics do not expose it.
+4. Report available model-scope/thinking-ceiling diagnostics without modifying
+   policy. Mark unavailable diagnostics as unchecked. Catalog-known, loaded,
+   policy-checked, and launch-verified are separate claims; no probe means launch
+   readiness is unverified. Paid or live probes require separate explicit approval
+   and must follow the current subagent protocol.
 
-```bash
-node <skill-root>/scripts/agent-overrides.mjs status \
-  --file <settings-path>
-```
+## Safety and Superwork contract
 
-## Safety rules
-
-- Never modify agent definition files.
-- Never use `subagent({ action: "update" })` for bundled agents; it requires an editable user/project agent file and is not an `agentOverrides` writer.
-- Never change `subagents.defaultModel`, `subagents.defaultThinking`, agent tools, prompts, skills, disabled state, or unrelated settings.
-- Never display unrelated settings or credentials.
-- Stop without writing when model discovery fails, no requested model is known, a thinking level is unsupported, the settings file is malformed, or expected settings objects have incompatible types.
-- Do not claim a configured override is live until Pi has reloaded.
-- If a custom agent shadows a builtin and pins its own model or thinking in frontmatter, explain that the frontmatter can take precedence.
+- Never modify agent files, root/default models, tools, prompts, skills, disabled
+  flags, policy, fallback chains, provider overrides, or unrelated settings.
+- Never use subagent update/reset/profile loading as a substitute writer. Native
+  profile loading can replace the whole override map; this skill owns only the
+  selected model/thinking fields.
+- Never display credentials or raw JSON parse errors containing settings snippets.
+- Reject settings-file symlinks, including dangling links. Explain the refusal;
+  never resolve and modify the target without a separately approved workflow.
+- Preview is read-only. Writes use Pi-compatible locking, revision checks,
+  private temporary files, and atomic replacement. Non-cooperating writers can
+  still race the final check; avoid concurrent manual/settings edits. No-op
+  updates preserve file contents and do not create missing settings files.
+- Superwork should consume the loaded role defaults without passing model
+  overrides unless the user approves an exception. Root implementation is outside
+  this loadout. Record actual executor/model/thinking evidence, not assumed tiers.

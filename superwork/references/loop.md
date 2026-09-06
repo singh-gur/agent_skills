@@ -46,9 +46,14 @@ A phase is done only when, in order:
 2. **Fresh review passes** (subagents available) — a reviewer that has not
    worked on the phase checks the diff against goal + done criteria and
    reports blocking findings vs. notes. Blocking findings fail the gate.
-3. **State recorded** — phase status plus one line of evidence.
+3. **State recorded** — phase status plus one line of verification evidence,
+   executor (root or role), observed model/thinking, and run ID when delegated.
+   Mark unavailable runtime metadata unverified; never infer it from a tier.
 
 ### Failure handling
+
+Subagent infrastructure failures are blockers, not ordinary code-check failures;
+follow the fan-out playbook's stop/report/recovery rules instead of switching modes.
 
 - First failure: one fix iteration (diagnose → fix → re-run the full gate).
 - Second failure of the same gate: stop. Report the failure, the diagnosis,
@@ -60,7 +65,7 @@ Keep this at the bottom of the plan file, updated at every boundary:
 
 ```
 ## Progress
-- [x] Phase 1 — goal… — verified: <command/result> 2024-01-01
+- [x] Phase 1 — goal… — verified: <command/result> <date>; executor: <root/role>; model/thinking: <observed/unverified>; run: <id/n/a>
 - [ ] Phase 2 — in progress
 - [ ] Phase 3
 ```

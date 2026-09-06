@@ -157,27 +157,46 @@ Configures persistent per-agent model and thinking overrides for the builtin `pi
 
 Use it when you need:
 
-- fast models for reconnaissance and research agents
-- standard models for implementation and review agents
-- a deep model for oracle-style advisory work
+- fast models for reconnaissance and lightweight delegation
+- standard models for substantive research and implementation
+- strong models for review and oracle-style advisory work
 - user-wide or project-specific `subagents.agentOverrides`
 - a safe way to apply or remove only model and thinking fields
 
 Tier mapping:
 
-- T1: `scout`, `researcher`
-- T2: `worker`, `reviewer`, `delegate`
-- T3: `oracle` (`advisor` is an alias)
+- T1: `scout`, `delegate` — preferred thinking `low`
+- T2: `researcher`, `worker` — preferred thinking `high`
+- T3: `reviewer`, `oracle` — preferred thinking `xhigh` (`advisor` aliases `oracle`)
+
+Thinking choices are model-specific. Roles can be configured independently;
+existing saved overrides are not automatically regrouped or rewritten.
 
 Commands:
 
-- `/skill:agent-loadout set [user|project]`
-- `/skill:agent-loadout unset [user|project]`
+- `/skill:agent-loadout set [user|project] [all|T1|T2|T3|agent]`
+- `/skill:agent-loadout unset [user|project] [all|T1|T2|T3|agent]`
 - `/skill:agent-loadout status [user|project|all]`
+- `/skill:agent-loadout doctor [user|project|all]`
 
-The skill asks for a model and thinking level for each tier, shows the exact settings change, and requires confirmation before writing. It preserves unrelated Pi settings and does not perform per-launch routing.
+The skill batches model lookup, previews only selected model/thinking changes,
+and requires confirmation before revision-checked, Pi-compatible locked writes.
+It rejects settings-file symlinks, preserves unrelated settings, and skips no-op
+writes. Unset removes overrides; it does not restore previous values. Status
+shows saved overrides; doctor compares native loaded mappings without test launches.
+The standalone model catalog does not load session provider extensions or prove
+launch readiness. Reload/restart before relying on changed settings.
 
-Requires Pi, Node.js, and the `pi-subagents` package. Skill path in this repo: `agent-loadout/SKILL.md`
+Requires npm-installed Pi, Node.js, and `pi-subagents`. Integration checked against
+Pi 0.85.1 and pi-subagents 0.65.1. No per-launch routing or root-model changes.
+Skill path: `agent-loadout/SKILL.md`
+
+Run its tests (temporary fixtures only; the model CLI smoke uses an isolated,
+credential-free, offline environment):
+
+```bash
+node --test agent-loadout/scripts/*.test.mjs
+```
 
 ### `superwork`
 
@@ -195,7 +214,10 @@ What it does:
 - accepts an existing plan or frames one through compressed intake
 - runs each phase as research → build → verify with recorded state
 - gates every phase on passing verification plus fresh review
-- fans out to subagents (scout, researcher, worker, reviewer) when available
+- fans out to executable subagents (scout, researcher, worker, reviewer) when available
+- consumes Agent Loadout role defaults without unapproved per-run model overrides
+- records executor/model evidence and distinguishes root implementation from worker execution
+- stops on subagent infrastructure failures instead of silently changing execution mode
 - resumes interrupted runs from the phase state ledger
 
 Skill path in this repo: `superwork/SKILL.md`
@@ -344,7 +366,9 @@ Current skills in this repo:
 │   ├── SKILL.md
 │   └── scripts/
 │       ├── agent-overrides.mjs
-│       └── agent-overrides.test.mjs
+│       ├── agent-overrides.test.mjs
+│       ├── model-options.mjs
+│       └── model-options.test.mjs
 ├── arch-design/
 │   └── SKILL.md
 ├── caveman/
