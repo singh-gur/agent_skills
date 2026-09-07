@@ -23,7 +23,42 @@ export const TIER_AGENTS = {
   T2: ["researcher", "worker"],
   T3: ["reviewer", "oracle"],
 };
-const AGENTS = Object.values(TIER_AGENTS).flat();
+const BUILTIN_AGENTS = Object.values(TIER_AGENTS).flat();
+
+// Custom agents join a tier for the current invocation only; the assignment is
+// not persisted to settings. A null tier makes the agent addressable (direct
+// target, comma lists, unset) without joining any tier — for unset checklists.
+export function parseCustomMap(custom) {
+  if (custom === undefined) return {};
+  requireObject(custom, "Custom agent map");
+  const map = {};
+  for (const [name, tier] of Object.entries(custom)) {
+    const agent = String(name).trim();
+    if (!agent || BUILTIN_AGENTS.includes(agent) || agent === "advisor") {
+      throw new Error(`Custom agents must be non-builtin names distinct from advisor: ${JSON.stringify(name)}.`);
+    }
+    if (tier !== null && !Object.hasOwn(TIER_AGENTS, tier)) {
+      throw new Error(`Custom tier for ${agent} must be one of: T1, T2, T3, or null.`);
+    }
+    map[agent] = tier;
+  }
+  return map;
+}
+
+function tierAgents(custom = {}) {
+  const tiers = Object.fromEntries(
+    Object.entries(TIER_AGENTS).map(([tier, agents]) => [tier, [...agents]]),
+  );
+  for (const [agent, tier] of Object.entries(custom)) {
+    if (tier) tiers[tier].push(agent);
+  }
+  return tiers;
+}
+
+// Every agent the invocation knows: tier-assigned plus null-tier addressable.
+function managedAgents(custom = {}) {
+  return [...new Set([...Object.values(tierAgents(custom)).flat(), ...Object.keys(custom)])];
+}
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -34,12 +69,15 @@ function requireObject(value, label) {
   return value;
 }
 
-export function resolveTargets(target = "all") {
+export function resolveTargets(target = "all", custom = {}) {
   if (target === "advisor") target = "oracle";
-  if (target === "all") return [...AGENTS];
-  if (Object.hasOwn(TIER_AGENTS, target)) return [...TIER_AGENTS[target]];
-  if (AGENTS.includes(target)) return [target];
-  throw new Error(`Expected target: all, T1, T2, T3, or one of ${AGENTS.join(", ")}.`);
+  const tiers = tierAgents(custom);
+  if (target === "all") return Object.values(tiers).flat();
+  if (Object.hasOwn(tiers, target)) return [...tiers[target]];
+  if (Object.hasOwn(custom, target)) return [target];
+  if (BUILTIN_AGENTS.includes(target)) return [target];
+  const known = managedAgents(custom);
+  throw new Error(`Expected target: all, T1, T2, T3, or one of ${known.join(", ")}.`);
 }
 
 export function mappedOverrides(settings) {
@@ -49,7 +87,7 @@ export function mappedOverrides(settings) {
   if (subagents.agentOverrides === undefined) return {};
   const overrides = requireObject(subagents.agentOverrides, "subagents.agentOverrides");
 
-  for (const agent of AGENTS) {
+  for (const agent of BUILTIN_AGENTS) {
     if (overrides[agent] === undefined) continue;
     const label = `subagents.agentOverrides.${agent}`;
     const entry = requireObject(overrides[agent], label);
@@ -84,7 +122,7 @@ function normalizePolicy(policy) {
   };
 }
 
-export function setOverrides(settings, policies) {
+export function setOverrides(settings, policies, custom = {}) {
   mappedOverrides(settings);
   requireObject(policies, "Policies");
   if (!Object.keys(policies).length) throw new Error("At least one policy is required.");
@@ -96,7 +134,7 @@ export function setOverrides(settings, policies) {
 
   for (const [target, policy] of Object.entries(policies)) {
     const normalized = normalizePolicy(policy);
-    for (const agent of resolveTargets(target)) {
+    for (const agent of resolveTargets(target, custom)) {
       if (selected.has(agent)) throw new Error(`Overlapping policies for ${agent}.`);
       selected.add(agent);
       overrides[agent] = { ...overrides[agent], ...normalized };
@@ -105,9 +143,15 @@ export function setOverrides(settings, policies) {
   return next;
 }
 
-export function unsetOverrides(settings, target = "all") {
+export function resolveTargetList(targets, custom = {}) {
+  return [...new Set(targets.flatMap((target) => resolveTargets(target, custom)))];
+}
+
+export function unsetOverrides(settings, target = "all", custom = {}) {
   mappedOverrides(settings);
-  const agents = resolveTargets(target);
+  const agents = Array.isArray(target)
+    ? resolveTargetList(target, custom)
+    : resolveTargets(target, custom);
   const next = structuredClone(settings);
   const overrides = next.subagents?.agentOverrides;
   if (!overrides) return next;
@@ -201,10 +245,11 @@ function displayValue(value, field) {
   return JSON.stringify(value);
 }
 
-export function formatStatus(file, exists, settings) {
+export function formatStatus(file, exists, settings, custom = {}) {
   const overrides = mappedOverrides(settings);
+  const tiers = tierAgents(custom);
   const lines = [`Settings: ${file}${exists ? "" : " (missing)"}`, "Saved overrides only; not the live runtime mapping."];
-  for (const [tier, agents] of Object.entries(TIER_AGENTS)) {
+  for (const [tier, agents] of Object.entries(tiers)) {
     const signatures = agents.map((agent) => JSON.stringify([
       overrides[agent]?.model ?? null, overrides[agent]?.thinking ?? null,
     ]));
@@ -215,14 +260,20 @@ export function formatStatus(file, exists, settings) {
       lines.push(`  ${agent}: model=${displayValue(entry.model, "model")}, thinking=${displayValue(entry.thinking, "thinking")}`);
     }
   }
+  const mapped = new Set(managedAgents(custom));
+  const unmapped = Object.keys(overrides).filter((agent) => !mapped.has(agent)).sort();
+  if (unmapped.length) {
+    // Names only: unmapped entries are unvalidated, so their values are withheld.
+    lines.push(`Unmapped overrides (pass --custom to manage with tiers): ${unmapped.join(", ")}`);
+  }
   return lines.join("\n");
 }
 
-export function formatChanges(before, after) {
+export function formatChanges(before, after, custom = {}) {
   const previous = mappedOverrides(before);
   const next = mappedOverrides(after);
   const lines = [];
-  for (const agent of AGENTS) {
+  for (const agent of managedAgents(custom)) {
     for (const field of ["model", "thinking"]) {
       const a = previous[agent]?.[field];
       const b = next[agent]?.[field];
@@ -235,17 +286,32 @@ export function formatChanges(before, after) {
 function main() {
   const command = process.argv[2];
   const flags = {
-    status: ["file"],
-    set: ["file", "policies", "expect", "dry-run"],
-    unset: ["file", "target", "expect", "dry-run"],
+    status: ["file", "custom"],
+    set: ["file", "policies", "expect", "dry-run", "custom"],
+    unset: ["file", "target", "expect", "dry-run", "custom"],
   };
   if (!Object.hasOwn(flags, command)) throw new Error("Expected command: set, unset, or status.");
   const { values } = parseArguments(process.argv.slice(2), flags[command], ["dry-run"]);
   if (!values.file) throw new Error("--file is required.");
   const file = resolve(values.file);
+  let custom;
+  if (values.custom !== undefined) {
+    try {
+      custom = JSON.parse(values.custom);
+    } catch {
+      throw new Error("--custom must be a JSON object mapping agent names to tiers.");
+    }
+  }
+  const customMap = parseCustomMap(custom);
+  const targets = values.target === undefined
+    ? undefined
+    : values.target.split(",").map((name) => name.trim()).filter(Boolean);
+  if (values.target !== undefined && !targets.length) {
+    throw new Error("--target needs at least one of: all, T1, T2, T3, or a role name.");
+  }
   if (command === "status") {
     const current = readSettings(file);
-    console.log(formatStatus(file, current.exists, current.settings));
+    console.log(formatStatus(file, current.exists, current.settings, customMap));
     console.log(`Revision: ${current.revision}`);
     return;
   }
@@ -259,13 +325,13 @@ function main() {
     }
   }
   const result = updateSettings(file, (settings) => command === "set"
-    ? setOverrides(settings, policies)
-    : unsetOverrides(settings, values.target), {
+    ? setOverrides(settings, policies, customMap)
+    : unsetOverrides(settings, targets ?? "all", customMap), {
     expectedRevision: values.expect,
     dryRun: values["dry-run"] === true,
   });
   console.log(`Settings: ${file}`);
-  console.log(formatChanges(result.before, result.after));
+  console.log(formatChanges(result.before, result.after, customMap));
   console.log(`Revision: ${result.revision}`);
   if (values["dry-run"]) console.log("Preview only. Confirm these changes before applying with --expect.");
   else if (result.written) console.log("Reload or restart Pi, then inspect /subagents-models before relying on this mapping.");

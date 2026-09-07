@@ -26,6 +26,16 @@ Thinking values are recommendations: offer only the selected model's supported
 levels and use Pi's clamped recommendation. `advisor` resolves to `oracle`;
 never create an `advisor` override.
 
+Custom agents have no pinned tier. Before any set/unset write, enumerate
+available agents natively and ask the user to assign each non-builtin agent to
+T1, T2, or T3, or leave it unmanaged. Pass that assignment as the helper's
+`--custom` JSON map (agent name to tier, or `null` to make the agent
+addressable without joining a tier, used by unset); it applies to the current
+invocation only and is not persisted in settings. With the map supplied, tier
+targets,
+`all`, and direct role targets include the assigned custom agents, so a full
+loadout covers every subagent, not just the six builtin roles.
+
 Existing settings store role names, not tier numbers. Do not migrate or rewrite
 saved overrides automatically. T4 and old four-tier helper flags are unsupported.
 
@@ -93,11 +103,20 @@ no additional dependency is needed.
    node <skill-root>/scripts/agent-overrides.mjs status --file "<settings-path>"
    ```
 
-2. Ask only for the selected tiers/role, in one form. Recommend a current model
-   only when selected roles agree. Explicitly allow blank input to keep existing
-   overrides unchanged, including intentional differences within a tier. If all
-   inputs are blank, stop without writing. For a thinking-only change, keep the
-   current model and validate it normally; do not make the user rediscover it.
+   Then enumerate agents with `subagent({ action: "list", capabilities: true })`.
+   Any role outside the six builtin names is unmapped; a custom agent shadowing
+   a builtin name already matches that builtin.
+
+2. Ask only for the selected tiers/role, in one form. Include, in the same
+   form, one question per unmapped agent: assign it to T1, T2, or T3, or skip
+   it. Record the resulting map (for example
+   `{"workbench-plan-auditor":"T2","workbench-brief-analyst":"T1"}`) and pass
+   it as `--custom` on every helper command in this run. Recommend a current
+   model only when selected roles agree. Explicitly allow blank input to keep
+   existing overrides unchanged, including intentional differences within a
+   tier. If all inputs are blank, stop without writing. For a thinking-only
+   change, keep the current model and validate it normally; do not make the
+   user rediscover it.
 3. Batch the non-blank model queries in one runtime (at most six requests):
 
    ```bash
@@ -114,13 +133,15 @@ no additional dependency is needed.
 4. Ask for supported thinking choices in one form. Use each result's
    `thinkingLevels` and `preferredThinking`; select a sole supported level without
    another question. Preserve a currently consistent thinking choice if supported.
-5. Build policies keyed by the selected tier or canonical role. Omit unchanged
+5. Build policies keyed by the selected tier or canonical role (custom agent
+   names are direct role targets once assigned). Omit unchanged
    groups. Do not combine overlapping targets (for example, T3 and reviewer).
    Preview the exact diff:
 
    ```bash
    node <skill-root>/scripts/agent-overrides.mjs set --file "<settings-path>" \
-     --policies '{"reviewer":{"model":"provider/model","thinking":"high"}}' --dry-run
+     --policies '{"reviewer":{"model":"provider/model","thinking":"high"}}' \
+     --custom '{"workbench-plan-auditor":"T2"}' --dry-run
    ```
 
 6. Show the path and before/after model/thinking values. Explain which existing
@@ -145,14 +166,25 @@ no additional dependency is needed.
 
 ## Unset workflow
 
-Resolve scope/target, then preview:
+Resolve scope/target, run saved status, and enumerate agents with
+`subagent({ action: "list", capabilities: true })`. If any agent outside the
+builtin roles has a saved override (the status unmapped line), ask the user —
+in the same form — which of them to also unset, as a multi-select checklist.
+Checked names need no tier; map them with `null` in `--custom`. Combine the
+builtin target and the checked names as a comma-separated `--target` list,
+then preview:
 
 ```bash
 node <skill-root>/scripts/agent-overrides.mjs unset --file "<settings-path>" \
-  --target reviewer --dry-run
+  --target "T2,workbench-plan-auditor" \
+  --custom '{"workbench-plan-auditor":null}' --dry-run
 ```
 
-Use all, T1, T2, T3, or a mapped role as the target. Explain that unset removes
+Use all, T1, T2, T3, or a mapped role as the target; comma-separated lists are
+the union of their resolved agents. Custom agents are removed only when their
+name appears in the target list (with a `--custom` entry) or when a tier target
+covers a tier-assigned map. A tier-assigned `--custom` map from a previous set
+works too. Explain that unset removes
 only model/thinking, including overrides predating this skill. It is **not undo**:
 it does not restore previous values, and other scopes/provider overrides may
 still configure the role. Preserve other fields; remove only emptied role and
@@ -166,14 +198,18 @@ confirm again. Report the result and the reload/restart requirement.
 
 Run the settings helper's status command once per selected settings file. Report
 missing files, unset/cleared fields, invalid structure, and mixed tier overrides.
-Mixed values may be intentional after targeted edits. Do not treat invalid
+Saved overrides for agents outside the builtin roles appear as an unmapped-names
+line; report their names and offer tier assignment, but do not display their
+stored values, which are unvalidated. Mixed values may be intentional after
+targeted edits. Do not treat invalid
 settings as unset. Show only loadout-relevant values, never raw settings.
 
 Doctor also uses native read-only inspection, not test launches:
 
 1. Call `subagent({ action: "list", capabilities: true })` to identify available
    roles, shadowing, disabled/missing roles, and runner types. A runner's passive
-   availability is not authentication or launch proof.
+   availability is not authentication or launch proof. Report roles that have no
+   tier mapping and offer to assign them before the next set.
 2. Call `subagent({ action: "models" })` for loaded mappings, or direct the user
    to `/subagents-models` if native inspection is unavailable. Filter the report
    to mapped roles. Never fall back to dumping settings or auth files.

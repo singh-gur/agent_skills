@@ -169,6 +169,10 @@ Tier mapping:
 - T2: `researcher`, `worker` — preferred thinking `high`
 - T3: `reviewer`, `oracle` — preferred thinking `xhigh` (`advisor` aliases `oracle`)
 
+Custom agents have no pinned tier: before any set/unset write, the skill
+enumerates available agents and asks you to assign non-builtin agents to a
+tier (or skip them); unset offers a checklist of which custom agents to clear.
+
 Thinking choices are model-specific. Roles can be configured independently;
 existing saved overrides are not automatically regrouped or rewritten.
 

@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
-  formatChanges, formatStatus, readSettings, resolveTargets,
+  formatChanges, formatStatus, parseCustomMap, readSettings, resolveTargets, resolveTargetList,
   setOverrides, TIER_AGENTS, unsetOverrides, updateSettings,
 } from "./agent-overrides.mjs";
 import { findPiPackageRoot } from "./model-options.mjs";
@@ -228,6 +228,49 @@ test("rejects regular and dangling settings symlinks without replacing them", {
   assert.equal(readFileSync(file, "utf8"), "{}");
 });
 
+test("custom agents join tiers for the invocation and surface as unmapped otherwise", () => {
+  const custom = parseCustomMap({ "workbench-plan-auditor": "T2", "workbench-brief-analyst": "T1" });
+  assert.deepEqual(resolveTargets("all", custom), [
+    "scout", "delegate", "workbench-brief-analyst",
+    "researcher", "worker", "workbench-plan-auditor",
+    "reviewer", "oracle",
+  ]);
+  assert.deepEqual(resolveTargets("T1", custom), ["scout", "delegate", "workbench-brief-analyst"]);
+  assert.deepEqual(resolveTargets("workbench-plan-auditor", custom), ["workbench-plan-auditor"]);
+  assert.equal(resolveTargets("all").length, 6);
+  assert.throws(() => parseCustomMap({ reviewer: "T3" }), /non-builtin/);
+  assert.throws(() => parseCustomMap({ advisor: "T3" }), /non-builtin/);
+  assert.throws(() => parseCustomMap({ custom: "T4" }), /T1, T2, T3, or null/);
+
+  const addressable = parseCustomMap({ "workbench-plan-auditor": null });
+  assert.deepEqual(resolveTargets("all", addressable), resolveTargets("all"));
+  assert.deepEqual(resolveTargets("workbench-plan-auditor", addressable), ["workbench-plan-auditor"]);
+  assert.throws(() => resolveTargets("workbench-plan-auditor", {}), /Expected target/);
+  assert.deepEqual(resolveTargetList(["T2", "reviewer", "worker", "T3"], addressable), [
+    "researcher", "worker", "reviewer", "oracle",
+  ]);
+
+  const original = { subagents: { agentOverrides: { left: { model: "p/m", thinking: "low" } } } };
+  const updated = setOverrides(original, { T2: policies.T2 }, custom);
+  assert.equal(updated.subagents.agentOverrides["workbench-plan-auditor"].model, policies.T2.model);
+  assert.deepEqual(updated.subagents.agentOverrides.left, original.subagents.agentOverrides.left);
+  const without = unsetOverrides(updated, "all", custom);
+  assert.deepEqual(without.subagents.agentOverrides["workbench-plan-auditor"], undefined);
+  assert.deepEqual(without.subagents.agentOverrides.left, original.subagents.agentOverrides.left);
+  assert.deepEqual(updated.subagents.agentOverrides.left, original.subagents.agentOverrides.left);
+
+  const checklist = unsetOverrides(updated, ["T1", "workbench-plan-auditor"], addressable);
+  assert.equal(checklist.subagents.agentOverrides["workbench-plan-auditor"], undefined);
+  assert.equal(checklist.subagents.agentOverrides.scout, undefined);
+  assert.deepEqual(checklist.subagents.agentOverrides.researcher, updated.subagents.agentOverrides.researcher);
+
+  const status = formatStatus("s.json", true, updated, custom);
+  assert.match(status, /T2:\n  researcher: model="provider\/standard", thinking="high"\n  worker: model="provider\/standard", thinking="high"\n  workbench-plan-auditor: model="provider\/standard"/);
+  const unmappedStatus = formatStatus("s.json", true, original);
+  assert.match(unmappedStatus, /Unmapped overrides \(pass --custom to manage with tiers\): left/);
+  assert.match(formatChanges(original, updated, custom), /workbench-plan-auditor\.model: unset -> "provider\/standard"/);
+});
+
 test("CLI previews/applies targeted policies, rejects legacy flags, and sanitizes parse errors", (t) => {
   const { file } = fixture(t, {});
   const args = ["set", "--file", file, "--policies", JSON.stringify({ reviewer: policies.T3 })];
@@ -238,6 +281,26 @@ test("CLI previews/applies targeted policies, rejects legacy flags, and sanitize
   assert.equal(cli(...args, "--expect", revision).status, 0);
   assert.deepEqual(Object.keys(readSettings(file).settings.subagents.agentOverrides), ["reviewer"]);
   assert.equal(cli(...args, "--t4-model", "p/model", "--dry-run").status, 1);
+  const listArgs = ["set", "--file", file, "--policies", JSON.stringify({ T2: policies.T2 }),
+    "--custom", JSON.stringify({ "workbench-plan-auditor": "T2" })];
+  const listPreview = cli(...listArgs, "--dry-run");
+  assert.equal(listPreview.status, 0, listPreview.stderr);
+  const listRevision = listPreview.stdout.match(/Revision: (\w+)/)[1];
+  assert.equal(cli(...listArgs, "--expect", listRevision).status, 0);
+  const unsetPreview = cli("unset", "--file", file, "--target", "reviewer, workbench-plan-auditor",
+    "--custom", JSON.stringify({ "workbench-plan-auditor": null }), "--dry-run");
+  assert.equal(unsetPreview.status, 0, unsetPreview.stderr);
+  assert.match(unsetPreview.stdout, /workbench-plan-auditor\.model: "provider\/standard" -> unset/);
+  assert.doesNotMatch(unsetPreview.stdout, /worker\.model/);
+  assert.equal(cli("unset", "--file", file, "--target", "workbench-plan-auditor", "--dry-run").status, 1);
+  assert.equal(cli("unset", "--file", file, "--target", " ", "--dry-run").status, 1);
+  const customArgs = ["set", "--file", file, "--policies", JSON.stringify({ T3: policies.T3 }),
+    "--custom", JSON.stringify({ "workbench-plan-auditor": "T3" })];
+  const customPreview = cli(...customArgs, "--dry-run");
+  assert.equal(customPreview.status, 0, customPreview.stderr);
+  assert.match(customPreview.stdout, /workbench-plan-auditor\.model/);
+  assert.equal(cli("set", "--file", file, "--policies", "{}", "--custom", JSON.stringify({ x: "T9" }), "--dry-run").status, 1);
+  assert.equal(cli("set", "--file", file, "--policies", "{}", "--custom", "not-json", "--dry-run").status, 1);
   assert.equal(cli("unset", "--file", file).status, 1);
   assert.equal(cli("status", "--file", file, "--file", file).status, 1);
   writeFileSync(file, '{"unrelated":"PRIVATE_FIXTURE",');
