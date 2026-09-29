@@ -62,6 +62,8 @@ Before writing code, write a short feature tree in the scratch directory: base b
 
 Snap measured values to design intent when they fall within the dimension tolerance (4.199 → 4.2, 15.996 → 16), then let the verify step confirm them.
 
+If cosmetic text or a logo embossed or engraved on a surface obstructs a clean conversion, leave that marking out and model the underlying surface. Do not omit structural geometry, functional features, or markings the user explicitly asked to retain in the initial request. Record each omitted marking and its location in the feature tree and final report; its omission can still make raw comparison metrics fail.
+
 ### 4. Write the candidate
 
 Write `<scratch>/iter-1.scad` following [references/scad-style.md](references/scad-style.md) from the start. Match tessellation to the reported `segments` (see feature-recognition), so the comparison measures real modelling error rather than facet noise.
@@ -84,16 +86,27 @@ Handle the largest errors first: missing/extra material regions, then feature is
 - **Measure, don't guess.** If a value is uncertain, re-run `analyze_stl.py` with `--levels` or another `--axis` instead of nudging numbers.
 - **Revert regressions.** If an iteration scores worse than the best one so far (higher max deviation or lower IoU), continue from the best iteration.
 - **Rework when stuck.** If two consecutive iterations fail to improve the best result, the decomposition is probably wrong (wrong extrusion axis, missed feature, wrong base shape). Re-plan the feature tree before tuning numbers again.
-- **Freeform regions.** Some regions still fail after two primitive-based attempts: organic surfaces, sculpted blends, embossed text or logos, threads, or polygons flagged as too many vertices. **Stop and ask the user about each region.** Give its location and bbox, the current deviation there, and the diff render, then offer these options:
+- **Freeform regions.** Some regions still fail after two primitive-based attempts: organic surfaces, sculpted blends, threads, or polygons flagged as too many vertices. **Stop and ask the user about each region.** Also ask about text or logos the user initially required you to retain if two primitive-based attempts fail. Give the region's location and bbox, the current deviation there, and the diff render, then offer these options:
   1. Approximate with primitives and accept the residual deviation there. Record it as an accepted residual.
   2. Reproduce the region exactly with `extract_region.py` using the splice pattern from its `--help`. The mesh data goes in a clearly delimited section at the end of the file.
-  3. Leave the region out, for example a logo the user doesn't want. Record it.
+  3. Leave the region out, if the user agrees. Record it.
 
-  Re-run compare after acting on the answer. Accepted residuals and exclusions count as satisfied criteria for their regions only.
+  Re-run compare after acting on the answer. Record accepted residuals and exclusions as scoped user decisions; do not relabel failing raw criteria as PASS.
 
-### 7. Stop
+### 7. Stop or request best-effort acceptance
 
-Stop the loop when compare passes. Also stop after 8 iterations, using the best iteration. Continue to cleanup either way.
+Stop when compare passes. Otherwise, continue measured refinements up to 8 iterations, using the best iteration rather than the latest one if the limit is reached.
+
+Ask **once** whether the best candidate is good enough only if all of these hold:
+
+- At least 5 valid, compared candidate iterations have been completed, including at least 3 evidence-based refinement attempts after the initial model. Render/load failures do not count.
+- Two consecutive attempts have failed to improve the best candidate and the feature tree has been reconsidered, **or** the iteration limit has been reached. Do not interrupt an improving loop just because a candidate is close.
+- The best candidate renders as a usable complete part: its bounding-box dimensions pass, the principal bodies and all structural and functional features are present, and remaining discrepancies are localized rather than a missing body or major feature.
+- Its volume IoU is available and at least 0.98, and the 95th-percentile surface deviations in both directions are within the requested maximum-deviation target. Localized peaks and cosmetic exclusions may still fail the raw max-deviation or feature checks. If the user specified other targets, use those targets for the 95th-percentile check and require IoU to be no more than 0.01 below their IoU target.
+
+Before asking, re-run `compare.py` on the **best** `.scad` with the requested tolerances and `--work-dir <scratch>/preview --label best-preview`. This separate work directory avoids adding a preview row to iteration history. Render the best `.scad` as two or three clearly identified 800×600 model PNGs: an isometric view and orthographic views that expose the remaining discrepancies. Use OpenSCAD's `-o`, `--imgsize`, `--camera`, `--viewall`, `--autocenter`, and `--projection` options; `compare.py`'s `VIEWS` definitions provide working camera settings. Include these model images inline or as attachments in the question, plus a relevant `preview/diff_*.png` when it clarifies an error. If the client cannot display images inline, link the generated PNGs and say they require an image viewer; do not ask without providing accessible previews.
+
+State the best iteration, raw metrics versus each target, omitted cosmetic markings, and remaining localized errors. Ask whether to **accept this best effort with the stated deviations** or **continue refining**. Acceptance never means the numerical targets passed. If the user accepts, proceed to cleanup and report the failures and acceptance explicitly. If the user wants refinement, use remaining iterations; beyond iteration 8, continue only if the user explicitly authorizes more. Do not repeat this acceptance question automatically. If the gate is not met by iteration 8, do not ask whether an unusable model is good enough; finish with the best candidate and report what failed.
 
 ### 8. Clean up the code
 
@@ -104,7 +117,7 @@ Refactor the chosen iteration against the checklist in scad-style.md, then run c
 1. Write the final code to `<name>.scad` next to the input STL.
 2. Write `<name>.report.md` next to it, filling in [assets/report-template.md](assets/report-template.md) with the rows from `history.jsonl`.
 3. Delete the scratch directory.
-4. Tell the user the output paths, the final metrics table, whether every target passed, any residual issues, and the decisions they made.
+4. Tell the user the output paths, the final metrics table, whether every target passed, any residual issues or omitted markings, and the decisions they made. Report raw failures even when the user accepted the best effort or an exclusion.
 
 ## Edge cases
 

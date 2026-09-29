@@ -48,7 +48,8 @@ Build each constant band as `translate([0, 0, from]) linear_extrude(to - from) o
 - **Patterns.** Circles or rects repeating at a fixed pitch go in a `for` loop over offsets. Circles on a circle go in `for (a = [0 : 360 / n : 359]) rotate(a) translate([r, 0])`.
 - **Shell or wall.** When a band's outline has one hole that is an inset copy of the outer outline, use `difference() { outline(); offset(delta = -t) outline(); }`.
 - **Missing corner or partial pattern.** Hole patterns where one position is absent: loop over the full pattern with an explicit skip condition, and comment why.
-- **Text, logos, knurling, threads, organic surfaces.** These are freeform: follow the per-region ask in SKILL.md step 6.
+- **Cosmetic text and logos.** If they obstruct conversion, omit them and model the underlying surface unless the user's initial request explicitly requires them. Record the omitted region; see SKILL.md steps 3 and 7.
+- **Knurling, threads, organic surfaces, and initially required markings.** These are freeform: follow the per-region ask in SKILL.md step 6.
 
 ## Tessellation matching
 
