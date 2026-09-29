@@ -273,6 +273,31 @@ Skill path in this repo:
 
 - `arcane-compose/SKILL.md`
 
+### `stl-to-scad`
+
+Converts STL meshes into clean, parametric OpenSCAD code that matches the source geometry and dimensions.
+
+Use it when you need help with:
+
+- reverse-engineering an STL or 3D-print mesh into editable `.scad`
+- making a downloaded part parametric
+- recreating a part with measured, verified dimensions
+
+What it does:
+
+- analyzes the mesh into plane levels, cross-section bands, holes, bosses, revolve profiles, and symmetry
+- plans a feature tree, then runs a work → verify → improve/rework loop, capped at 8 iterations
+- scores each candidate on bounding-box and feature dimensions (±0.1 mm), two-way surface deviation (≤ 0.25 mm), and volume IoU (≥ 0.99), with diff renders and located missing/extra material
+- reverts regressions and re-plans when progress stalls
+- asks per region before approximating or splicing mesh data for freeform geometry
+- refactors the result for readability, re-verifies, and writes `<name>.scad` plus `<name>.report.md`
+
+Requires OpenSCAD 2021.01+ and `uv`; the scripts declare their Python dependencies inline.
+
+Skill path in this repo:
+
+- `stl-to-scad/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -338,6 +363,12 @@ Install the `arcane-compose` skill from this repository:
 npx skills add singh-gur/agent_skills --skill arcane-compose -g -y
 ```
 
+Install the `stl-to-scad` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill stl-to-scad -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -360,6 +391,7 @@ Current skills in this repo:
 - `superwork`
 - `setup-ci`
 - `arcane-compose`
+- `stl-to-scad`
 
 ## Source layout
 
@@ -407,6 +439,18 @@ Current skills in this repo:
 │       └── SPECS.template.md
 ├── skill-writer/
 │   └── SKILL.md
+├── stl-to-scad/
+│   ├── SKILL.md
+│   ├── assets/
+│   │   └── report-template.md
+│   ├── references/
+│   │   ├── feature-recognition.md
+│   │   └── scad-style.md
+│   └── scripts/
+│       ├── analyze_stl.py
+│       ├── compare.py
+│       ├── extract_region.py
+│       └── repair_stl.py
 └── superwork/
     ├── SKILL.md
     └── references/

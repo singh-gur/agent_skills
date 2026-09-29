@@ -20,3 +20,6 @@ Thumbs.db
 # Node dependencies
 node_modules/
 .pi-subagents/
+
+# Python bytecode
+__pycache__/
