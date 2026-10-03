@@ -298,6 +298,31 @@ Skill path in this repo:
 
 - `stl-to-scad/SKILL.md`
 
+### `design-scad`
+
+Designs new parametric OpenSCAD models for FDM 3D printing from an idea, prompt, or sketch.
+
+Use it when you need help with:
+
+- turning an idea or text description into a printable `.scad` part
+- modelling from a hand sketch or dimensioned drawing
+- enclosures, brackets, mounts, holders, adapters, and similar functional parts
+
+What it does:
+
+- extracts dimensions from prompts and sketches, tagging each with its source
+- asks only for missing critical dimensions, then waits for approval of a design brief (dimensions, assumptions, print orientation, feature tree, parameters)
+- writes Customizer-ready OpenSCAD with named parameters, ranges, and `assert()` guards
+- uses OpenSCAD built-ins by default; BOSL2 only on opt-in for threads, gears, or complex rounding
+- renders each iteration and checks watertightness, bed contact, target size, overhangs, and thin walls, capped at 5 iterations before checking in
+- stress-tests parameter range ends, then writes `<name>.scad` and a `<name>.png` preview
+
+Requires OpenSCAD 2021.01+ and `uv`; the script declares its Python dependencies inline. Use `stl-to-scad` to convert existing meshes.
+
+Skill path in this repo:
+
+- `design-scad/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -369,6 +394,12 @@ Install the `stl-to-scad` skill from this repository:
 npx skills add singh-gur/agent_skills --skill stl-to-scad -g -y
 ```
 
+Install the `design-scad` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill design-scad -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -392,6 +423,7 @@ Current skills in this repo:
 - `setup-ci`
 - `arcane-compose`
 - `stl-to-scad`
+- `design-scad`
 
 ## Source layout
 
@@ -409,6 +441,13 @@ Current skills in this repo:
 │   └── SKILL.md
 ├── caveman/
 │   └── SKILL.md
+├── design-scad/
+│   ├── SKILL.md
+│   ├── references/
+│   │   ├── fdm-printability.md
+│   │   └── scad-style.md
+│   └── scripts/
+│       └── render_check.py
 ├── draw-diagram/
 │   ├── SKILL.md
 │   ├── references/
