@@ -1,6 +1,6 @@
 # FDM printability
 
-These are starting values for a 0.4 mm nozzle, 0.2 mm layers, and PLA or PETG. Printers vary, so turn every fit-critical value into a `[Fit]` parameter rather than hard-coding it.
+These are starting values for a 0.4 mm nozzle, 0.2 mm layers, and PLA or PETG. Printers vary, so turn every fit-critical value into a `[Print & Fit]` parameter rather than hard-coding it.
 
 ## Contents
 

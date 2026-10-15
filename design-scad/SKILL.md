@@ -4,7 +4,7 @@ description: Designs new parametric OpenSCAD (.scad) models for FDM 3D printing 
 compatibility: Requires OpenSCAD 2021.01 or newer on PATH (or the OPENSCAD env var) and uv; network access on first use so uv can fetch the script's Python packages. Reading sketches needs a client with image input.
 metadata:
   author: gurbakhshish
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Design SCAD
@@ -28,7 +28,7 @@ Use these unless the user or brief says otherwise:
 | Libraries | OpenSCAD built-ins only; BOSL2 by opt-in (step 4) |
 | Refine iterations | 5 before checking in |
 
-Clearances, hole compensation, hardware sizes, and other print rules are in [references/fdm-printability.md](references/fdm-printability.md). Code layout and naming are in [references/scad-style.md](references/scad-style.md). Read both before writing code.
+Clearances, hole compensation, hardware sizes, and other print rules are in [references/fdm-printability.md](references/fdm-printability.md). Code layout, parameter grouping, and variable naming conventions are in [references/scad-style.md](references/scad-style.md). Read both before preparing the brief or writing code.
 
 ## Script
 
@@ -78,11 +78,11 @@ Ask only about missing information that changes the geometry, in rounds of 2–5
 Then present the brief:
 
 1. **Purpose** and output name
-2. **Key dimensions**: name, value, and source (user, sketch, scaled from sketch, standard, or assumed)
+2. **Key dimensions**: parameter name (using the `<feature>_<property>` scheme from scad-style.md), scalar value, and source (user, sketch, scaled from sketch, standard, or assumed)
 3. **Assumptions and defaults applied**, including clearances
 4. **Print orientation** and any expected supports
 5. **Feature tree**: base bodies, then added features, then removed features
-6. **Parameters**: the Customizer groups and which values the user will want to tweak
+6. **Parameters**: functional Customizer groups (`[Main Dimensions]`, feature groups, `[Print & Fit]`) listing the user-tweakable scalar sliders vs fixed derived dimensions
 7. **Library**: built-ins or BOSL2, and why
 
 Wait for explicit approval before writing code, and revise the brief when asked. If the user tells you to skip the gate, proceed with the stated assumptions and list them again at delivery.
@@ -102,7 +102,7 @@ If the probe fails, do not install BOSL2 yourself. Tell the user to clone `https
 
 ### 5. Write the candidate
 
-Write `<scratch>/iter-1.scad`, following scad-style.md and fdm-printability.md from the start. Use the brief's dimension names as the parameter names.
+Write `<scratch>/iter-1.scad`, following scad-style.md (naming, grouping, and module architecture) and fdm-printability.md from the start. Use the brief's parameter names and Customizer groups.
 
 ### 6. Check
 
