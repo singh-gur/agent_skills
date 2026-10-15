@@ -323,6 +323,29 @@ Skill path in this repo:
 
 - `design-scad/SKILL.md`
 
+### `opengym-routine-builder`
+
+Builds an importable openGym workout plan from an interview.
+
+Use it when you need help with:
+
+- creating a new workout routine or weekly split for a self-hosted openGym
+- fitting a plan to your equipment, schedule, session length, and limitations
+
+What it does:
+
+- takes an initial prompt and skips whatever it already answers
+- interviews you in short rounds of choice questions with recommended defaults
+- checks exercise IDs against the openGym catalogue for your version, so nothing is invented
+- shows a per-day routine table for approval before writing anything
+- writes an openGym plan file and checks it with the app's own plan parser when node is available
+
+Requires network access plus git (or a local openGym checkout). Node is optional.
+
+Skill path in this repo:
+
+- `opengym-routine-builder/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -400,6 +423,12 @@ Install the `design-scad` skill from this repository:
 npx skills add singh-gur/agent_skills --skill design-scad -g -y
 ```
 
+Install the `opengym-routine-builder` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill opengym-routine-builder -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -424,6 +453,7 @@ Current skills in this repo:
 - `arcane-compose`
 - `stl-to-scad`
 - `design-scad`
+- `opengym-routine-builder`
 
 ## Source layout
 
@@ -466,6 +496,10 @@ Current skills in this repo:
 │           ├── package.json
 │           ├── package-lock.json
 │           └── render.mjs
+├── opengym-routine-builder/
+│   ├── SKILL.md
+│   └── references/
+│       └── plan-format.md
 ├── plan/
 │   └── SKILL.md
 ├── setup-ci/
