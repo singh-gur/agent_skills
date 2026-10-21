@@ -1,10 +1,10 @@
 ---
 name: design-solidcraft
-description: Designs new parametric 3D-printable parts in SolidCraft through its MCP server (solidcraft-cli mcp) from an idea, text prompt, or sketch/drawing, using a confirmed design brief, a feature tree, and a build-measure-refine loop (timeline errors, measured vs computed volume and size, bed contact, overhangs, wall thickness, parameter range ends). Delivers a .solidcraft design plus .3mf, .step, and a .png preview. First checks that solidcraft-cli is installed and the MCP server is enabled, and gives setup instructions when not. Use when asked to design, model, create, or generate a printable part, enclosure, bracket, mount, holder, adapter, or other object in SolidCraft. Not for OpenSCAD output; use design-scad for that.
+description: Designs new parametric 3D-printable parts in SolidCraft through its MCP server (solidcraft-cli mcp) from an idea, text prompt, or sketch/drawing. Aims for visually appealing parts without giving up function or printability, using a confirmed design brief, a feature tree, and a build-measure-refine loop at a user-chosen verification level (none, light, or full: timeline errors, measured vs computed volume and size, bed contact, overhangs, wall thickness, parameter range ends). Delivers a .solidcraft design plus .3mf, .step, and a .png preview. First checks that solidcraft-cli is installed and the MCP server is enabled, and gives setup instructions when not. Use when asked to design, model, create, or generate a printable part, enclosure, bracket, mount, holder, adapter, or other object in SolidCraft. Not for OpenSCAD output; use design-scad for that.
 compatibility: Requires SolidCraft's solidcraft-cli (written against 0.18.3) with its MCP server enabled in the agent client and allowed to write to the output folder. Overhang colours need a GPU or software renderer. Reading sketches needs a client with image input.
 metadata:
   author: gurbakhshish
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Design SolidCraft
@@ -31,13 +31,40 @@ Use these unless the user or brief says otherwise:
 | Unsupported overhang | ≤ 45° from vertical |
 | Size check tolerance | ±0.1 mm |
 | Volume check tolerance | 0.01 % (0.1 % for long shallow arcs) |
-| Refine iterations | 5 before checking in |
+| Verification level | light, asked in preflight |
 
 References, relative to this skill's directory:
 
 - [references/setup.md](references/setup.md): install and MCP setup instructions for the user. Read it only when preflight fails.
 - [references/fdm-printability.md](references/fdm-printability.md): clearances, holes, hardware sizes, and print rules. Read it before preparing the brief.
 - [references/solidcraft-commands.md](references/solidcraft-commands.md): command shapes, sketch-plane axes, ids, picks, checks, and known traps. Read it before the first build call.
+
+## Aesthetics
+
+Make the part look deliberately designed, not just functional. When goals conflict, put function first, printability second, and looks third. Never give up a fit, wall, clearance, or support-free print for appearance.
+
+- **Proportions:** use a few related dimensions (shared margins, equal wall and rim widths) rather than arbitrary ones, and avoid bulky solid blocks. Ribs and tapers look lighter than thick walls, and they are stiffer.
+- **Edges:** use one consistent fillet radius on top and vertical edges, and 45° chamfers on bottom edges, because a fillet there is an overhang. Leave no sharp outside corners unless the look calls for them.
+- **Alignment:** centre features on shared axes and space patterns evenly. Keep the part symmetric unless function says otherwise.
+- **Clean visible faces:** recess fasteners with counterbores or countersinks, and put text and details on top faces. Keep the face that will be seen free of clutter.
+- **Parametric looks:** make the look adjustable too, for example `edge_fillet_r` and `bottom_chamfer`.
+
+## Verification levels
+
+The level sets which checks run and how many refine iterations happen before checking in with the user:
+
+| Check | None | Light | Full |
+|---|---|---|---|
+| `measure` after each build stage (step 4) | yes | yes | yes |
+| Timeline (step 5) | once, before delivery | yes | yes |
+| Numbers (step 5) | per-stage only | yes | yes |
+| Views (step 5) | none | `iso` only | `iso`, `top`, `front`, `right` |
+| Overhangs (step 5) | skip | yes | yes |
+| Walls (step 5) | skip | from parameters only, no sections | yes |
+| Refine iterations before checking in (step 6) | none | 2 | 5 |
+| Range ends (step 7) | skip | skip | yes |
+
+At every level, fix timeline errors and per-stage mismatches as they appear. Tidying in step 7 runs at every level.
 
 ## MCP tools
 
@@ -62,6 +89,7 @@ Clients prefix tool names differently (e.g. `mcp__solidcraft__batch`). This skil
 3. **Open work.** If the `inspect_design` reply lists timeline features, the session holds someone's work. Ask before calling `new_design`, which discards unsaved changes. If the server's instructions say `Backend: connected to the SolidCraft app`, you are driving the user's open app, and screenshots with `view` also move their camera.
 4. **Name and output.** Pick a short `snake_case` `<name>` from the object (e.g. `cable_clip`). Write outputs to the current directory unless the user gives a path. If any of the four output files already exists there, ask before overwriting.
 5. **Scratch and file access.** Create the scratch folder `<out>/design-solidcraft-<name>/` for checkpoints and renders. Don't start its name with a dot: the server refuses hidden folders unless an `--allow-path` covers them. Probe it with `screenshot {"source":"model","width":64,"height":64,"path":"<scratch>/probe.png"}`. If the server refuses the path, its error lists the folders it may use. Offer to write the outputs in one of those instead, or give the user "Allow the output folder" from setup.md and stop.
+6. **Verification level.** Unless the request already names one, ask the user to choose **none**, **light** (recommended), or **full**, summarising each from [Verification levels](#verification-levels) in one line. Use light if the user leaves the choice to you. The user may change the level at any point.
 
 ### 2. Understand the input
 
@@ -86,6 +114,7 @@ Ask only about missing information that changes the geometry, in rounds of 2–5
 - what it fits, holds, or attaches to, and how (screws, snap, press fit, glue)
 - functional loads or flex that change wall thickness or orientation
 - unusual printer limits (small bed, different nozzle, resin)
+- the style, only when the part will be on display and nothing in the request hints at one
 
 Then present the brief:
 
@@ -93,9 +122,10 @@ Then present the brief:
 2. **Key dimensions**: parameter name in the form `<feature>_<property>` (e.g. `plate_width`, `mount_hole_d`), value, and source (user, sketch, scaled from sketch, standard, or assumed)
 3. **Assumptions and defaults applied**, including clearances
 4. **Print orientation** and any expected supports
-5. **Feature tree**: base bodies, then added features, then removed features, then fillets and chamfers, each with the feature name it will get
-6. **Parameters**: the driving parameters the user should tweak, each with its allowed range, and the derived values that follow them
-7. **Expected numbers**: the overall bounding box and volume, computed by hand. Give a bound instead when an exact volume is impractical, for example for lofts or fillets on curved edges.
+5. **Look**: the edge treatment, proportions, and visible-face choices from [Aesthetics](#aesthetics), plus any style the user asked for
+6. **Feature tree**: base bodies, then added features, then removed features, then fillets and chamfers, each with the feature name it will get
+7. **Parameters**: the driving parameters the user should tweak, each with its allowed range, and the derived values that follow them
+8. **Expected numbers**: the overall bounding box and volume, computed by hand. Give a bound instead when an exact volume is impractical, for example for lofts or fillets on curved edges.
 
 Wait for explicit approval before building, and revise the brief when asked. If the user tells you to skip the gate, proceed with the stated assumptions and list them again at delivery.
 
@@ -116,11 +146,11 @@ A failed batch changes nothing. Read `failed.index` and `failed.error`, fix that
 
 ### 5. Check
 
-Run every check on the current iteration:
+Run the checks your verification level includes on the current iteration. At level none, skip this step and step 6, and run only the timeline check, once, before delivery.
 
 - **Timeline.** Run `inspect_design {"measure":false,"sketches":false}`. No feature may have an `error`. A `warning` such as `Boolean retry` is acceptable only if the volume matches.
 - **Numbers.** Run `measure {}`. Check that the body count is as planned, the volume and bounding box match the brief within tolerance, and every body's bounding box starts at Z ≈ 0.
-- **Views.** Take `iso`, `top`, `front`, and `right` screenshots at 480 × 320, each with a `path` in the scratch folder. If the client accepts images, look at them. Check that every feature in the tree is present, counted correctly (holes, ribs, slots), and in the right place. For sketch input, compare each orthographic view with the matching sketch view.
+- **Views.** Take `iso`, `top`, `front`, and `right` screenshots at 480 × 320, each with a `path` in the scratch folder. If the client accepts images, look at them. Check that every feature in the tree is present, counted correctly (holes, ribs, slots), and in the right place, and that the look matches the brief: consistent edges, aligned features, and clean visible faces. For sketch input, compare each orthographic view with the matching sketch view.
 - **Overhangs.** Run `execute inspect.draft {"pull":[0,0,1],"angle":45}`, setting `angle` to the overhang limit. Take a `bottom` screenshot and one from below the part (`camera` pitch about −0.5). Red faces face down and lean further from vertical than the limit. Red faces on Z = 0 are bed contact, and each body needs at least one. Every other red face is an overhang. Resolve each overhang in one of three ways:
   - accept it as an intentional bridge within the limits in fdm-printability.md
   - redesign it (45° chamfer, teardrop hole, reorientation, split part)
@@ -131,11 +161,11 @@ Run every check on the current iteration:
 
 ### 6. Refine
 
-Fix problems in this order: timeline errors and number mismatches, then mismatches with the brief or sketch, then overhang and wall items. Change features in place with `timeline.inspect` and `timeline.edit`, and parameters with `set_parameter`. Undo a bad change with `undo`. Save each checked attempt as the next `<scratch>/iter-N.solidcraft`. If an attempt is worse than the best so far, `open` the best one and continue from it.
+Fix problems in this order: timeline errors and number mismatches, then mismatches with the brief or sketch, then overhang and wall items, then look items. Change features in place with `timeline.inspect` and `timeline.edit`, and parameters with `set_parameter`. Undo a bad change with `undo`. Save each checked attempt as the next `<scratch>/iter-N.solidcraft`. If an attempt is worse than the best so far, `open` the best one and continue from it.
 
-After 5 valid iterations, if timeline errors or mismatches with the brief remain, show the best iteration's iso view and list its open issues. Ask whether to **continue refining** or **accept with the listed issues**.
+After your level's iteration limit (2 for light, 5 for full), if timeline errors or mismatches with the brief remain, show the best iteration's iso view and list its open issues. Ask whether to **continue refining** or **accept with the listed issues**.
 
-If the user asks for design changes, update the brief. Re-confirm the brief if dimensions or features change materially. Each new round of changes gets up to 5 iterations.
+If the user asks for design changes, update the brief. Re-confirm the brief if dimensions or features change materially. Each new round of changes gets your level's iteration limit again.
 
 ### 7. Clean up and stress-test
 
@@ -144,8 +174,8 @@ If the user asks for design changes, update the brief. Re-confirm the brief if d
    - every expression used in more than one place is a named parameter
    - every feature and sketch has a unique name that says what it is
    - every sketch has 0 degrees of freedom: run `inspect_design {"measure":false}` once and check each sketch's DOF
-2. **Range ends.** Set each main parameter to the low end of its range, then the high end, with `set_parameter`. For related parameters, use one `batch` of `parameters.change` steps. At each end, check that `errors` is empty, `measure` gives the volume and bounding box you computed for that state, and every body still starts at Z ≈ 0. Otherwise, fix the expressions or tighten the range. Then restore the defaults.
-3. Re-run the step 5 checks on the defaults. The cleanup must not add failures, overhangs, or thin walls.
+2. **Range ends** (full only). Set each main parameter to the low end of its range, then the high end, with `set_parameter`. For related parameters, use one `batch` of `parameters.change` steps. At each end, check that `errors` is empty, `measure` gives the volume and bounding box you computed for that state, and every body still starts at Z ≈ 0. Otherwise, fix the expressions or tighten the range. Then restore the defaults.
+3. Re-run your level's step 5 checks on the defaults. The cleanup must not add failures, overhangs, or thin walls.
 
 ### 8. Deliver
 
@@ -157,9 +187,10 @@ If the user asks for design changes, update the brief. Re-confirm the brief if d
 2. Delete the scratch folder.
 3. Tell the user:
    - the output paths
+   - the verification level used and, for none or light, the checks that were skipped
    - the size, body count, and volume
    - the print orientation and any supports needed
-   - how each overhang and wall item was handled
+   - how each overhang and wall item was handled, and the look applied
    - the parameters most worth tweaking, which are the favourites in SolidCraft's Parameters table
    - the assumptions made
 4. Show the preview image if the client can display it.
