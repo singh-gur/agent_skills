@@ -346,6 +346,31 @@ Skill path in this repo:
 
 - `opengym-routine-builder/SKILL.md`
 
+### `design-solidcraft`
+
+Designs new parametric 3D-printable parts in SolidCraft through its MCP server.
+
+Use it when you need help with:
+
+- turning an idea, description, or sketch into a printable SolidCraft design
+- enclosures, brackets, mounts, holders, adapters, and similar functional parts
+- getting an editable `.solidcraft` design plus print-ready and CAD exports
+
+What it does:
+
+- checks that `solidcraft-cli` is installed, its MCP server is enabled, and it may write to the output folder, and gives setup instructions when not
+- extracts dimensions from prompts and sketches, tagging each with its source
+- waits for approval of a design brief (dimensions, assumptions, print orientation, feature tree, parameters, expected size and volume)
+- builds in a few staged MCP batches with named parameters, range comments, and favourites
+- checks timeline errors, measured vs computed volume and size, bed contact, overhangs (draft analysis), and wall thickness, capped at 5 iterations before checking in
+- stress-tests parameter range ends, then writes `<name>.solidcraft`, `<name>.3mf`, `<name>.step`, and a `<name>.png` preview
+
+Requires SolidCraft's `solidcraft-cli` with its MCP server (`solidcraft-cli mcp`) enabled in your agent client. Use `design-scad` for OpenSCAD output.
+
+Skill path in this repo:
+
+- `design-solidcraft/SKILL.md`
+
 ## Install with `npx skills`
 
 Install the `plan` skill from this repository:
@@ -429,6 +454,12 @@ Install the `opengym-routine-builder` skill from this repository:
 npx skills add singh-gur/agent_skills --skill opengym-routine-builder -g -y
 ```
 
+Install the `design-solidcraft` skill from this repository:
+
+```bash
+npx skills add singh-gur/agent_skills --skill design-solidcraft -g -y
+```
+
 ### Command breakdown
 
 - `add` installs a skill from a repository
@@ -454,6 +485,7 @@ Current skills in this repo:
 - `stl-to-scad`
 - `design-scad`
 - `opengym-routine-builder`
+- `design-solidcraft`
 
 ## Source layout
 
@@ -478,6 +510,12 @@ Current skills in this repo:
 │   │   └── scad-style.md
 │   └── scripts/
 │       └── render_check.py
+├── design-solidcraft/
+│   ├── SKILL.md
+│   └── references/
+│       ├── fdm-printability.md
+│       ├── setup.md
+│       └── solidcraft-commands.md
 ├── draw-diagram/
 │   ├── SKILL.md
 │   ├── references/
