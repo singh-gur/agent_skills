@@ -359,15 +359,16 @@ Use it when you need help with:
 What it does:
 
 - checks that `solidcraft-cli` is installed, its MCP server is enabled, and it may write to the output folder, and gives setup instructions when not
-- asks for a verification level at the start: none (build sanity only), light (numbers, iso view, overhangs, 2 iterations), or full
+- asks for a verification level at the start: none (build sanity only), light (numbers, iso and top views, overhangs, 2 fix rounds), or full
 - extracts dimensions from prompts and sketches, tagging each with its source
 - aims for visually appealing parts (consistent edges, proportions, clean visible faces) without giving up function or printability
+- names, ranges, and orders parameters consistently (`<feature>_<property>`, range in each comment, favourites)
 - waits for approval of a design brief (dimensions, assumptions, print orientation, look, feature tree, parameters, expected size and volume)
-- builds in a few staged MCP batches with named parameters, range comments, and favourites
-- checks timeline errors, measured vs computed volume and size, bed contact, overhangs (draft analysis), and wall thickness, capped at 5 iterations before checking in (at full verification)
-- stress-tests parameter range ends (at full verification), then writes `<name>.solidcraft`, `<name>.3mf`, `<name>.step`, and a `<name>.png` preview
+- plans each build stage as numbers, builds it in one MCP batch from a checkpoint, and checks volume, size, and centre of mass before the next stage
+- checks timeline errors, bed contact, overhangs (draft analysis), and wall thickness, with up to 2 (light) or 5 (full) fix rounds before checking in
+- walks parameter range ends (at full verification), then writes `<name>.solidcraft`, `<name>.3mf`, `<name>.step`, and a `<name>.png` preview
 
-Requires SolidCraft's `solidcraft-cli` with its MCP server (`solidcraft-cli mcp`) enabled in your agent client. Use `design-scad` for OpenSCAD output.
+Requires SolidCraft's `solidcraft-cli` with its MCP server (`solidcraft-cli mcp`) enabled in your agent client. Covers new designs only. Use `design-scad` for OpenSCAD output.
 
 Skill path in this repo:
 
@@ -516,6 +517,7 @@ Current skills in this repo:
 │   ├── SKILL.md
 │   └── references/
 │       ├── fdm-printability.md
+│       ├── parameters-and-style.md
 │       ├── setup.md
 │       └── solidcraft-commands.md
 ├── draw-diagram/
