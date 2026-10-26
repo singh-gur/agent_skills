@@ -1,10 +1,10 @@
 ---
 name: design-scad
 description: Designs new parametric OpenSCAD (.scad) models for FDM 3D printing from an idea, text prompt, or sketch/drawing, using a confirmed design brief, a feature tree, and a render-check-refine loop (render errors, watertightness, bed contact, overhangs, thin walls, target size). Use when asked to design, model, create, or generate a printable part, enclosure, bracket, mount, holder, adapter, or other object in OpenSCAD/SCAD from a description, idea, photo of a sketch, or drawing. Not for converting existing STL meshes; use stl-to-scad for that.
-compatibility: Requires OpenSCAD 2021.01 or newer on PATH (or the OPENSCAD env var) and uv; network access on first use so uv can fetch the script's Python packages. Reading sketches needs a client with image input.
+compatibility: Requires OpenSCAD 2021.01 or newer, found on PATH, as an AppImage in ~/Applications, or as the Flathub app (the OPENSCAD env var overrides), and uv; network access on first use so uv can fetch the script's Python packages. Reading sketches needs a client with image input.
 metadata:
   author: gurbakhshish
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Design SCAD
@@ -30,9 +30,11 @@ Use these unless the user or brief says otherwise:
 
 Clearances, hole compensation, hardware sizes, and other print rules are in [references/fdm-printability.md](references/fdm-printability.md). Code layout, parameter grouping, and variable naming conventions are in [references/scad-style.md](references/scad-style.md). Read both before preparing the brief or writing code.
 
-## Script
+## Scripts
 
-Paths are relative to this skill's directory. Run with `uv run --script scripts/render_check.py …`. uv installs the dependencies from the script's inline metadata. `--help` lists all options.
+Paths are relative to this skill's directory. Run with `uv run --script scripts/<name>.py …`. uv installs the dependencies from each script's inline metadata. `--help` lists all options.
+
+`scripts/openscad_env.py` finds the OpenSCAD install to use and reports its command, version, install type (AppImage, Flatpak, snap, distro package), backends, user library path, and whether BOSL2 is installed. If `OPENSCAD` is set, that command wins. Otherwise the newest install found wins. `render_check.py` uses the same lookup. Exit code 1 means no OpenSCAD was found.
 
 `scripts/render_check.py` renders a `.scad` to STL and writes iso/top/front/right PNGs. It reports:
 
@@ -47,7 +49,7 @@ Paths are relative to this skill's directory. Run with `uv run --script scripts/
 
 ### 1. Preflight
 
-1. Confirm that `openscad --version` and `uv --version` both work. If either is missing, stop and tell the user what to install.
+1. Confirm that `uv --version` works, then run `uv run --script scripts/openscad_env.py`. If either fails, stop and tell the user what to install. Tell the user which OpenSCAD version and install the report chose, and relay any `Note:` lines. Wherever these instructions show `openscad`, use the reported command. To use a different install, set `OPENSCAD` to its command.
 2. Pick a short `snake_case` `<name>` from the object (e.g. `cable_clip`). Write outputs to the current directory unless the user gives a path. If `<name>.scad` or `<name>.png` already exists there, ask before overwriting.
 3. Create the scratch directory `.design-scad-<name>/` in the output directory. All iterations and renders go there.
 
@@ -91,14 +93,7 @@ Wait for explicit approval before writing code, and revise the brief when asked.
 
 Default to OpenSCAD built-ins, because the file then renders anywhere and works in web Customizers. Propose BOSL2 only when the design needs things that would make built-in code long or fragile: functional printed threads, gears, rounding of complex 3D edges, or sweeps. Include this proposal in the brief whenever you can foresee it. Also offer the built-in alternative, such as a heat-set insert or nut trap in place of a printed thread.
 
-If the user picks BOSL2, probe for it:
-
-```
-printf 'include <BOSL2/std.scad>\ncuboid(1);\n' > <scratch>/bosl2-probe.scad
-openscad -o <scratch>/bosl2-probe.stl <scratch>/bosl2-probe.scad
-```
-
-If the probe fails, do not install BOSL2 yourself. Tell the user to clone `https://github.com/BelfrySCAD/BOSL2` into the "User Library Path" that `openscad --info` reports, or to choose built-ins. BOSL2 is beta software, so record the dependency in the file header.
+If the user picks BOSL2, check the `BOSL2:` line of the preflight report. If it says `not installed`, do not install BOSL2 yourself. Tell the user to clone `https://github.com/BelfrySCAD/BOSL2` into the user library path that the report shows, or to choose built-ins. BOSL2 is beta software, so record the dependency in the file header.
 
 ### 5. Write the candidate
 

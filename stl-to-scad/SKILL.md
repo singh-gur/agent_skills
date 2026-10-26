@@ -1,10 +1,10 @@
 ---
 name: stl-to-scad
 description: Converts STL meshes into clean, parametric OpenSCAD (.scad) code that reproduces the part's geometry and dimensions, using a measured analyze, model, verify, and refine loop (bounding-box and feature dimensions, surface deviation, volume IoU). Use when asked to convert, reverse-engineer, remodel, or recreate an STL or 3D-print mesh as OpenSCAD/SCAD code, or to make an STL editable or parametric.
-compatibility: Requires OpenSCAD 2021.01 or newer on PATH (or the OPENSCAD env var) and uv. Network access is needed on first use so uv can fetch the scripts' Python packages.
+compatibility: Requires OpenSCAD 2021.01 or newer, found on PATH, as an AppImage in ~/Applications, or as the Flathub app (the OPENSCAD env var overrides), and uv. Network access is needed on first use so uv can fetch the scripts' Python packages.
 metadata:
   author: gurbakhshish
-  version: "1.0"
+  version: "1.1"
 ---
 
 # STL to SCAD
@@ -28,6 +28,7 @@ Keep the STL's coordinate frame, orientation, and units. The output must overlay
 
 Paths are relative to this skill's directory. Run them with `uv run --script scripts/<name>.py …`; uv installs each script's dependencies from its inline metadata, so no project setup is needed. Every script supports `--help`.
 
+- `scripts/openscad_env.py` finds the OpenSCAD install to use and reports its command, version, install type (AppImage, Flatpak, snap, distro package), backends, and library paths. If `OPENSCAD` is set, that command wins. Otherwise the newest install found wins. `compare.py` uses the same lookup. Exit code 1 means no OpenSCAD was found.
 - `scripts/analyze_stl.py` reports mesh health, bounding box, plane levels, mirror symmetry, and cross-section bands. Section outlines come classified as circle, rect, rounded_rect, or polygon, along with circle features and revolve profiles.
 - `scripts/compare.py` renders a candidate `.scad` and scores it against the reference. It reports PASS/FAIL per criterion, located missing/extra material, deviation hotspots, and feature-dimension issues, and writes diff PNGs. Exit code: 0 pass, 1 fail, 2 render/load error.
 - `scripts/repair_stl.py` makes a non-watertight reference watertight and reports how far the surface moved.
@@ -37,7 +38,7 @@ Paths are relative to this skill's directory. Run them with `uv run --script scr
 
 ### 1. Preflight
 
-1. Confirm the input STL exists and that `openscad --version` and `uv --version` both work. If either tool is missing, stop and tell the user what to install.
+1. Confirm the input STL exists and that `uv --version` works, then run `uv run --script scripts/openscad_env.py`. If either tool is missing, stop and tell the user what to install. Tell the user which OpenSCAD version and install the report chose, and relay any `Note:` lines. Wherever these instructions mention running OpenSCAD, use the reported command. To use a different install, set `OPENSCAD` to its command.
 2. If `<name>.scad` or `<name>.report.md` already exists next to the input, ask before overwriting.
 3. Create the scratch directory `.stl2scad-<name>/` next to the input. All iterations and artifacts go there.
 
@@ -104,7 +105,7 @@ Ask **once** whether the best candidate is good enough only if all of these hold
 - The best candidate renders as a usable complete part: its bounding-box dimensions pass, the principal bodies and all structural and functional features are present, and remaining discrepancies are localized rather than a missing body or major feature.
 - Its volume IoU is available and at least 0.98, and the 95th-percentile surface deviations in both directions are within the requested maximum-deviation target. Localized peaks and cosmetic exclusions may still fail the raw max-deviation or feature checks. If the user specified other targets, use those targets for the 95th-percentile check and require IoU to be no more than 0.01 below their IoU target.
 
-Before asking, re-run `compare.py` on the **best** `.scad` with the requested tolerances and `--work-dir <scratch>/preview --label best-preview`. This separate work directory avoids adding a preview row to iteration history. Render the best `.scad` as two or three clearly identified 800×600 model PNGs: an isometric view and orthographic views that expose the remaining discrepancies. Use OpenSCAD's `-o`, `--imgsize`, `--camera`, `--viewall`, `--autocenter`, and `--projection` options; `compare.py`'s `VIEWS` definitions provide working camera settings. Include these model images inline or as attachments in the question, plus a relevant `preview/diff_*.png` when it clarifies an error. If the client cannot display images inline, link the generated PNGs and say they require an image viewer; do not ask without providing accessible previews.
+Before asking, re-run `compare.py` on the **best** `.scad` with the requested tolerances and `--work-dir <scratch>/preview --label best-preview`. This separate work directory avoids adding a preview row to iteration history. Render the best `.scad` as two or three clearly identified 800×600 model PNGs: an isometric view and orthographic views that expose the remaining discrepancies. Use the preflight's OpenSCAD command with `-o`, `--imgsize`, `--camera`, `--viewall`, `--autocenter`, and `--projection` options; `compare.py`'s `VIEWS` definitions provide working camera settings. Include these model images inline or as attachments in the question, plus a relevant `preview/diff_*.png` when it clarifies an error. If the client cannot display images inline, link the generated PNGs and say they require an image viewer; do not ask without providing accessible previews.
 
 State the best iteration, raw metrics versus each target, omitted cosmetic markings, and remaining localized errors. Ask whether to **accept this best effort with the stated deviations** or **continue refining**. Acceptance never means the numerical targets passed. If the user accepts, proceed to cleanup and report the failures and acceptance explicitly. If the user wants refinement, use remaining iterations; beyond iteration 8, continue only if the user explicitly authorizes more. Do not repeat this acceptance question automatically. If the gate is not met by iteration 8, do not ask whether an unusable model is good enough; finish with the best candidate and report what failed.
 
@@ -122,5 +123,5 @@ Refactor the chosen iteration against the checklist in scad-style.md, then run c
 ## Edge cases
 
 - **Several bodies.** If the STL holds several disjoint bodies, give each its own module and call them all at the top level.
-- **Slow renders.** When compare reports long render times (CGAL in OpenSCAD 2021 is slow), avoid `minkowski()` on 3D shapes and high `$fn` on large boolean stacks; do the rounding in 2D with `offset()` instead.
+- **Slow renders.** When compare reports long render times (the 2021.01 release renders with slow CGAL; development snapshots use the much faster Manifold backend), avoid `minkowski()` on 3D shapes and high `$fn` on large boolean stacks; do the rounding in 2D with `offset()` instead.
 - **No flat faces.** If the part has no planar faces at all (a fully organic mesh), tell the user up front that clean CSG cannot match it. Ask whether to proceed region by region or stop.

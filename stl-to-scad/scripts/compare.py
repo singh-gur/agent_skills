@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import time
@@ -39,8 +38,8 @@ import trimesh
 from scipy import ndimage
 
 import analyze_stl as an
+from openscad_env import find_openscad
 
-OPENSCAD = os.environ.get("OPENSCAD", "openscad")
 VIEWS = {  # name -> (gimbal rotation, projection)
     "iso": ("55,0,25", "p"),
     "top": ("0,0,0", "o"),
@@ -52,10 +51,13 @@ SHAPE_PARAMS = {"circle": ("d",), "rect": ("size", "angle"), "rounded_rect": ("s
 
 def run_openscad(args: list[str], what: str) -> list[str]:
     """Run OpenSCAD; return warning lines or exit(2) with the error output."""
+    cmd = find_openscad()
+    if not cmd:
+        sys.exit("error: no working OpenSCAD found; run scripts/openscad_env.py for details, install it, or set OPENSCAD")
     try:
-        proc = subprocess.run([OPENSCAD, *args], capture_output=True, text=True, timeout=1800)
+        proc = subprocess.run([*cmd, *args], capture_output=True, text=True, timeout=1800)
     except FileNotFoundError:
-        sys.exit(f"error: OpenSCAD binary '{OPENSCAD}' not found; install it or set OPENSCAD")
+        sys.exit(f"error: OpenSCAD command '{cmd[0]}' not found; fix OPENSCAD or unset it")
     except subprocess.TimeoutExpired:
         sys.exit(f"error: OpenSCAD timed out while {what}")
     lines = (proc.stdout + proc.stderr).splitlines()

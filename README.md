@@ -292,7 +292,7 @@ What it does:
 - asks per region before approximating or splicing mesh data for freeform geometry
 - refactors the result for readability, re-verifies, and writes `<name>.scad` plus `<name>.report.md`
 
-Requires OpenSCAD 2021.01+ and `uv`; the scripts declare their Python dependencies inline.
+Requires OpenSCAD 2021.01+ and `uv`; the scripts declare their Python dependencies inline. `scripts/openscad_env.py` finds OpenSCAD on PATH, as an AppImage in `~/Applications`, or as the Flathub app (newest wins; `OPENSCAD` overrides) and reports the version and install type.
 
 Skill path in this repo:
 
@@ -317,7 +317,7 @@ What it does:
 - renders each iteration and checks watertightness, bed contact, target size, overhangs, and thin walls, capped at 5 iterations before checking in
 - stress-tests parameter range ends, then writes `<name>.scad` and a `<name>.png` preview
 
-Requires OpenSCAD 2021.01+ and `uv`; the script declares its Python dependencies inline. Use `stl-to-scad` to convert existing meshes.
+Requires OpenSCAD 2021.01+ and `uv`; the scripts declare their Python dependencies inline. `scripts/openscad_env.py` finds OpenSCAD on PATH, as an AppImage in `~/Applications`, or as the Flathub app (newest wins; `OPENSCAD` overrides) and reports the version and install type. Use `stl-to-scad` to convert existing meshes.
 
 Skill path in this repo:
 
